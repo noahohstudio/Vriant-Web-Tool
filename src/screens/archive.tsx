@@ -266,13 +266,15 @@ function SheetRow({ item }: { item: ArchiveItem }) {
           </span>
         </span>
       </span>
-      <Tag tone={item.tone}>{item.label}</Tag>
-      {openable && (
-        <span className="sheet-row__go" aria-hidden="true">
-          {action}
-          <Icon name="chevronRight" size={16} />
-        </span>
-      )}
+      <span className="sheet-row__end">
+        <Tag tone={item.tone}>{item.label}</Tag>
+        {openable && (
+          <span className="sheet-row__go" aria-hidden="true">
+            {action}
+            <Icon name="chevronRight" size={16} />
+          </span>
+        )}
+      </span>
       <Menu label={`Actions for ${item.title}`}>{(close) => <SheetMenuBody item={item} close={close} />}</Menu>
     </li>
   );

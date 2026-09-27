@@ -134,6 +134,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { box-shadow: va
   gap: 12px;
   min-height: 0;
   padding: 32px 24px 40px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   border-right: 1px solid var(--line-rule);
@@ -254,7 +255,8 @@ button.rail-row:hover { background: var(--bg-tint); }
   gap: 0;
   padding: 0;
 }
-.split__left, .split__right { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Columns scroll vertically only: nothing inside can slide them sideways. */
+.split__left, .split__right { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .split__left { gap: 20px; padding: 32px 32px 64px 64px; }
 .split__right { gap: 18px; padding: 32px 40px 64px 32px; }
 .split__rule { background: var(--line-rule); }
@@ -795,7 +797,7 @@ html.vt-theme::view-transition-new(theme-switch), html.vt-nav::view-transition-n
 
 /* ——— Slider ——— */
 .slider { --knob: 20px; display: flex; flex-direction: column; gap: 8px; user-select: none; -webkit-user-select: none; }
-.slider__track { position: relative; height: 28px; cursor: pointer; touch-action: none; }
+.slider__track { position: relative; height: 28px; cursor: pointer; touch-action: none; container-type: inline-size; }
 .slider__rail, .slider__fill-wrap { position: absolute; top: 50%; height: 4px; margin-top: -2px; }
 .slider__rail { left: 0; right: 0; border-radius: var(--radius-full); background: var(--bg-tint-strong); }
 .slider__fill-wrap { left: calc(var(--knob) / 2); right: calc(var(--knob) / 2); }
@@ -803,7 +805,8 @@ html.vt-theme::view-transition-new(theme-switch), html.vt-nav::view-transition-n
 .slider__ticks { position: absolute; top: 50%; left: calc(var(--knob) / 2); right: calc(var(--knob) / 2); }
 .slider__ticks i { position: absolute; top: 0; left: calc(var(--at) * 100%); width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--line-node); transition: background-color var(--dur-base); }
 .slider__ticks i.is-on { background: var(--text-on-accent); opacity: 0.75; }
-.slider__knob-rail { position: absolute; inset: 0 auto 0 0; width: calc(100% - var(--knob)); pointer-events: none; transform: translateX(calc(var(--p) * 100%)); }
+/* A knob-sized box that travels p × (track − knob), so it never reaches past the track and can't widen the column around it. */
+.slider__knob-rail { position: absolute; inset: 0 auto 0 0; width: var(--knob); pointer-events: none; transform: translateX(calc(var(--p) * (100cqw - var(--knob)))); }
 .slider__knob { position: absolute; top: 50%; left: 0; width: var(--knob); height: var(--knob); margin-top: calc(var(--knob) / -2); border-radius: 50%; background: var(--bg-raised); box-shadow: var(--shadow-raised), inset 0 0 0 1.5px var(--accent-default); pointer-events: auto; cursor: grab; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast); }
 .slider__knob:focus-visible { box-shadow: var(--shadow-raised), inset 0 0 0 1.5px var(--accent-default), 0 0 0 4px var(--accent-subtle); }
 .slider:not(.is-dragging) .slider__knob-rail, .slider:not(.is-dragging) .slider__fill { transition: transform 280ms var(--ease-out); }
@@ -883,7 +886,13 @@ button.choice:active { transform: scale(0.995); }
 .sheet-row__hit { position: absolute; inset: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .sheet-row__hit:focus-visible { box-shadow: inset 0 0 0 2px var(--focus-ring); }
 .sheet-row > :not(.sheet-row__hit) { position: relative; }
-.sheet-row__thumb, .sheet-row__text, .sheet-row .tag, .sheet-row__go { pointer-events: none; }
-.sheet-row__go { display: inline-flex; align-items: center; gap: 2px; color: var(--text-tertiary); font: 500 13px/16px var(--font-sans); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast), transform var(--dur-base) var(--ease-out); }
-.sheet-row--open:hover .sheet-row__go, .sheet-row__hit:focus-visible ~ .sheet-row__go { opacity: 1; transform: none; }
+.sheet-row__thumb, .sheet-row__text, .sheet-row__end { pointer-events: none; }
+/* Status and hover hint share one slot on the right edge. The status rests flush right, as in Figma;
+   on hover it gives way to the hint. Whichever leaves goes quickly, and the other follows a beat later. */
+.sheet-row__end { display: grid; flex: none; justify-items: end; align-items: center; }
+.sheet-row__end > * { grid-area: 1 / 1; }
+.sheet-row__end .tag { transition: opacity var(--dur-base) var(--ease-out) 60ms; }
+.sheet-row__go { display: inline-flex; align-items: center; gap: 2px; color: var(--text-tertiary); font: 500 13px/16px var(--font-sans); white-space: nowrap; opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+.sheet-row--open:hover .sheet-row__end .tag, .sheet-row__hit:focus-visible ~ .sheet-row__end .tag { opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
+.sheet-row--open:hover .sheet-row__go, .sheet-row__hit:focus-visible ~ .sheet-row__end .sheet-row__go { opacity: 1; transform: none; transition: opacity var(--dur-base) var(--ease-out) 60ms, transform var(--dur-base) var(--ease-out) 60ms; }
 .keep--filed { flex-direction: row; align-items: center; gap: 8px; }
