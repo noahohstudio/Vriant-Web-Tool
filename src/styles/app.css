@@ -18,7 +18,9 @@ body {
 h1, h2, h3, p, figure, dl, dd { margin: 0; }
 button, input, select { font: inherit; color: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
-* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+/* No visible scroll bars: every area still scrolls with trackpad, wheel, keyboard and touch. */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 ::selection { background: var(--highlight-bg); }
 :focus-visible { outline: none; }
 button:focus-visible, a:focus-visible, [tabindex]:focus-visible { box-shadow: var(--focus-shadow); }
