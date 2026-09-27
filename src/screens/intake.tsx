@@ -1,9 +1,60 @@
 import { useMemo, useState } from 'react';
+
+const DIFFICULTY: { value: Difficulty; label: string; mark: string; hint: string }[] = [
+  { value: 'easier', label: 'Easier than the original', mark: 'Easier', hint: 'Rounder, friendlier numbers than your sheet.' },
+  { value: 'same', label: 'Same as the original', mark: 'Same', hint: 'New numbers in the same ranges as your sheet.' },
+  { value: 'harder', label: 'Harder than the original', mark: 'Harder', hint: 'Wider ranges and untidy numbers — more to keep track of.' },
+];
+const MAX_TYPED = 30;
+
+/** 1–12 on the slider; double-click the number (or press Enter on it) to type any count up to 30. */
+function QuestionCount({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const commit = (raw: string) => {
+    setEditing(false);
+    const n = parseInt(raw, 10);
+    if (Number.isFinite(n)) onChange(Math.min(MAX_TYPED, Math.max(1, n)));
+  };
+  return (
+    <div className="field">
+      <div className="row-between">
+        <span className="field__label">Questions</span>
+        {editing ? (
+          <input
+            autoFocus
+            className="count-input"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={MAX_TYPED}
+            defaultValue={value}
+            aria-label="Number of questions"
+            onFocus={(e) => e.currentTarget.select()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit(e.currentTarget.value);
+              if (e.key === 'Escape') setEditing(false);
+            }}
+            onBlur={(e) => commit(e.currentTarget.value)}
+          />
+        ) : (
+          <button type="button" className="count" data-tip="Double-click to type a number" onDoubleClick={() => setEditing(true)} onKeyDown={(e) => e.key === 'Enter' && setEditing(true)}>
+            <span className="count__n">{value}</span> {value === 1 ? 'question' : 'questions'}
+          </button>
+        )}
+      </div>
+      <Slider min={1} max={12} value={value} onChange={onChange} label="Number of questions" valueText={(v) => `${v} questions`} />
+      <div className="slider__ends t-mono-s c-tertiary">
+        <span>1</span>
+        <span>12</span>
+      </div>
+    </div>
+  );
+}
 import { Dropzone } from '../components/dropzone';
 import { countBy, fmtDate, fmtTime, RailRow } from '../components/shell';
-import { Button, Checkbox, ClassTag, Icon, SectionLabel, Segmented, Toggle } from '../components/ui';
+import { Button, Checkbox, ClassTag, Icon, SectionLabel, Segmented, Slider } from '../components/ui';
 import { problemText, TEMPLATES, type Difficulty, type Sheet } from '../lib/problems';
-import { generate, go, loadSheet, setActiveClass, setPage, setSetup, toggleProblem, useStore, type Upload } from '../lib/store';
+import { generate, go, loadSheet, pickClassId, setActiveClass, setPage, setSetup, toggleProblem, useStore, type Upload } from '../lib/store';
 
 function onFile(file: File | null) {
   if (!file) return loadSheet(null);
@@ -152,29 +203,38 @@ export function ReviewMain() {
             </Checkbox>
           ))}
         </div>
+        <QuestionCount value={setup.count} onChange={(count) => setSetup({ count })} />
         <div className="field">
-          <span className="field__label">Questions</span>
-          <Segmented
-            label="Number of questions"
-            value={setup.count}
-            onChange={(count) => setSetup({ count })}
-            options={[5, 10, 15].map((n) => ({ value: n, label: n === setup.count ? `${n} questions` : String(n) }))}
+          <div className="row-between">
+            <span className="field__label">Difficulty</span>
+            <span className="t-label-s swap" key={setup.difficulty}>
+              {DIFFICULTY.find((d) => d.value === setup.difficulty)?.label}
+            </span>
+          </div>
+          <Slider
+            min={0}
+            max={2}
+            value={Math.max(0, DIFFICULTY.findIndex((d) => d.value === setup.difficulty))}
+            onChange={(i) => setSetup({ difficulty: DIFFICULTY[i].value })}
+            label="Difficulty"
+            valueText={(i) => DIFFICULTY[i].label}
+            marks={DIFFICULTY.map((d, i) => ({ value: i, label: d.mark }))}
           />
+          <p className="t-body-s c-tertiary swap" key={`h-${setup.difficulty}`}>
+            {DIFFICULTY.find((d) => d.value === setup.difficulty)?.hint}
+          </p>
         </div>
-        <label className="field">
-          <span className="field__label">Difficulty</span>
-          <span className="field__box">
-            <select className="field__input" value={setup.difficulty} onChange={(e) => setSetup({ difficulty: e.target.value as Difficulty })}>
-              <option value="easier">Easier than the original</option>
-              <option value="same">Same as the original</option>
-              <option value="harder">Harder than the original</option>
-            </select>
-            <Icon name="chevronDown" className="c-tertiary" />
-          </span>
-        </label>
         <div className="row-between">
           <span className="t-body-m">Time myself</span>
-          <Toggle checked={setup.timer} onChange={(timer) => setSetup({ timer })} label="Time myself" />
+          <Segmented
+            label="Time myself"
+            value={setup.timer ? 'on' : 'off'}
+            onChange={(v) => setSetup({ timer: v === 'on' })}
+            options={[
+              { value: 'off', label: 'Off' },
+              { value: 'on', label: 'On' },
+            ]}
+          />
         </div>
         <Button
           block
@@ -201,7 +261,7 @@ export function ReviewRail() {
   const page = useStore((s) => s.page);
   const classes = useStore((s) => s.classes);
   if (!sheet) return null;
-  const cls = classes.find((c) => c.name === sheet.course) ?? classes[0];
+  const cls = classes.find((c) => c.id === pickClassId(classes, sheet.course)) ?? classes[0];
   return (
     <>
       <SectionLabel index="01" title="Sheet" />

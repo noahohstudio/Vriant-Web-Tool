@@ -94,12 +94,14 @@ export function QuestionCard({ q, sheetTitle, hintOpen, onHint, isLast }: { q: Q
           <Prompt q={q} />
         </p>
         {q.kind === 'free' ? <AnswerInput q={q} /> : <Choices q={q} />}
-        {hintOpen && (
-          <p className="qcard__hint t-body-s">
-            <Icon name="hint" size={16} />
-            {t.hint}
-          </p>
-        )}
+        <div className="reveal" data-open={hintOpen || undefined} aria-hidden={!hintOpen}>
+          <div className="reveal__inner">
+            <p className="qcard__hint t-body-s">
+              <Icon name="hint" size={16} />
+              {t.hint}
+            </p>
+          </div>
+        </div>
       </div>
       <footer className="qcard__foot">
         <Button variant="ghost" icon="hint" onClick={onHint} aria-expanded={hintOpen}>

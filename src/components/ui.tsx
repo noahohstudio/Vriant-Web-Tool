@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import type { Result } from '../lib/problems';
 import type { Hue, Tone } from '../lib/store';
 
@@ -26,6 +26,7 @@ const ICONS = {
   more: '<circle cx="5" cy="10" r=".75"/><circle cx="10" cy="10" r=".75"/><circle cx="15" cy="10" r=".75"/>',
   search: '<circle cx="9" cy="9" r="5.25"/><path d="m13 13 3.5 3.5"/>',
   hint: '<path d="M7.5 12.25c-1.3-.9-2.2-2.4-2.2-4.1a4.7 4.7 0 0 1 9.4 0c0 1.7-.9 3.2-2.2 4.1v1.5h-5z"/><path d="M8.25 16.5h3.5"/>',
+  edit: '<path d="m12.75 3.75 3.5 3.5L7.5 16H4v-3.5z"/><path d="m11 5.5 3.5 3.5"/>',
   trash: '<path d="M3.5 5.75h13M8 5.75V4.5c0-.55.45-1 1-1h2c.55 0 1 .45 1 1v1.25M5.25 5.75l.7 9.9c.06.8.72 1.35 1.5 1.35h5.1c.78 0 1.44-.55 1.5-1.35l.7-9.9"/>',
   flag: '<path d="M5 17V3.5M5 4h9.5l-2.25 3.5L14.5 11H5"/>',
   sliders: '<path d="M3 6h2M9 6h8M3 14h8M15 14h2"/><circle cx="7" cy="6" r="2"/><circle cx="13" cy="14" r="2"/>',
@@ -141,6 +142,8 @@ export function Mark({ result, small }: { result: Result; small?: boolean }) {
 export const Kbd = ({ children }: { children: ReactNode }) => <kbd className="kbd">{children}</kbd>;
 
 // ——— Controls ———
+/** Segmented control. A single thumb glides to the selected option: its position animates with
+ *  transform (compositor), its width eases alongside. Nothing else reflows, so options never jump. */
 export function Segmented<T extends string | number>({
   options,
   value,
@@ -154,39 +157,58 @@ export function Segmented<T extends string | number>({
   label: string;
   className?: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ x: number; w: number } | null>(null);
+  const [animate, setAnimate] = useState(false);
+  const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const measure = useCallback(() => {
+    const el = ref.current?.querySelectorAll<HTMLButtonElement>('.seg__opt')[index];
+    if (el) setThumb((t) => (t && t.x === el.offsetLeft && t.w === el.offsetWidth ? t : { x: el.offsetLeft, w: el.offsetWidth }));
+  }, [index]);
+  useLayoutEffect(measure, [measure, options]);
+  useEffect(() => {
+    const ro = new ResizeObserver(() => measure());
+    if (ref.current) ro.observe(ref.current);
+    document.fonts?.ready.then(() => measure());
+    return () => ro.disconnect();
+  }, [measure]);
+  // Transitions switch on after the first paint, so the thumb never slides in from zero.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnimate(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const select = (i: number, focus: boolean) => {
+    const next = (i + options.length) % options.length;
+    onChange(options[next].value);
+    if (focus) ref.current?.querySelectorAll<HTMLButtonElement>('.seg__opt')[next]?.focus();
+  };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const i = options.findIndex((o) => o.value === value);
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') onChange(options[(i + 1) % options.length].value);
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') onChange(options[(i - 1 + options.length) % options.length].value);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') select(index + 1, true);
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') select(index - 1, true);
     else return;
     e.preventDefault();
   };
   return (
-    <div className={`seg ${className}`} role="radiogroup" aria-label={label} onKeyDown={onKey}>
-      {options.map((o) => {
-        const on = o.value === value;
-        return (
-          <button
-            key={String(o.value)}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            aria-label={o.label}
-            tabIndex={on ? 0 : -1}
-            className={`seg__opt${o.iconOnly && !on ? ' seg__opt--icon' : ''}`}
-            onClick={() => onChange(o.value)}
-          >
-            {o.icon && <Icon name={o.icon} size={16} />}
-            {(!o.iconOnly || on) && <span>{o.label}</span>}
-          </button>
-        );
-      })}
+    <div ref={ref} className={`seg ${className}`} data-animate={animate || undefined} role="radiogroup" aria-label={label} onKeyDown={onKey}>
+      {thumb && <span className="seg__thumb" aria-hidden="true" style={{ width: thumb.w, transform: `translateX(${thumb.x}px)` }} />}
+      {options.map((o, i) => (
+        <button
+          key={String(o.value)}
+          type="button"
+          role="radio"
+          aria-checked={i === index}
+          aria-label={o.label}
+          data-tip={o.iconOnly ? o.label : undefined}
+          tabIndex={i === index ? 0 : -1}
+          className={`seg__opt${o.iconOnly ? ' seg__opt--icon' : ''}`}
+          onClick={() => select(i, false)}
+        >
+          {o.icon && <Icon name={o.icon} size={16} />}
+          {!o.iconOnly && <span>{o.label}</span>}
+        </button>
+      ))}
     </div>
   );
-}
-
-export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <button type="button" role="switch" aria-checked={checked} aria-label={label} className="toggle" onClick={() => onChange(!checked)} />;
 }
 
 export function Checkbox({ checked, onChange, disabled, children }: { checked: boolean; onChange: () => void; disabled?: boolean; children: ReactNode }) {
@@ -198,6 +220,177 @@ export function Checkbox({ checked, onChange, disabled, children }: { checked: b
       </span>
       <span className="check__label">{children}</span>
     </label>
+  );
+}
+
+// ——— Slider ———
+const KNOB = 20;
+/** Custom slider. While dragging, the knob follows the pointer; on release it glides to the nearest stop.
+ *  Knob and fill move with transform only (compositor), so dragging never janks. */
+export function Slider({
+  min,
+  max,
+  step = 1,
+  value,
+  onChange,
+  label,
+  valueText,
+  marks,
+}: {
+  min: number;
+  max: number;
+  step?: number;
+  value: number;
+  onChange: (v: number) => void;
+  label: string;
+  valueText?: (v: number) => string;
+  marks?: { value: number; label: string }[];
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const knobRef = useRef<HTMLSpanElement>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const [drag, setDrag] = useState<number | null>(null);
+  const span = max - min;
+  const snap = (v: number) => Math.min(max, Math.max(min, Math.round((v - min) / step) * step + min));
+  const pOf = (v: number) => (Math.min(max, Math.max(min, v)) - min) / span;
+  const stops = useMemo(() => Array.from({ length: Math.round(span / step) + 1 }, (_, i) => min + i * step), [min, span, step]);
+  const move = (clientX: number) => {
+    const r = trackRef.current!.getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, (clientX - r.left - KNOB / 2) / (r.width - KNOB)));
+    setDrag(t);
+    const v = snap(min + t * span);
+    if (v !== valueRef.current) onChange(v);
+  };
+  const onKey = (e: KeyboardEvent<HTMLSpanElement>) => {
+    const page = Math.max(step, Math.round(span / 4 / step) * step);
+    const map: Record<string, number> = { ArrowRight: value + step, ArrowUp: value + step, ArrowLeft: value - step, ArrowDown: value - step, PageUp: value + page, PageDown: value - page, Home: min, End: max };
+    if (!(e.key in map)) return;
+    e.preventDefault();
+    const v = snap(map[e.key]);
+    if (v !== value) onChange(v);
+  };
+  const end = () => setDrag(null);
+  return (
+    <div className={`slider${drag !== null ? ' is-dragging' : ''}`} style={{ '--p': drag ?? pOf(value) } as CSSProperties}>
+      <div
+        ref={trackRef}
+        className="slider__track"
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch {
+            /* pointer already released */
+          }
+          move(e.clientX);
+          knobRef.current?.focus({ preventScroll: true });
+        }}
+        onPointerMove={(e) => drag !== null && move(e.clientX)}
+        onPointerUp={end}
+        onPointerCancel={end}
+      >
+        <span className="slider__rail" />
+        <span className="slider__fill-wrap">
+          <span className="slider__fill" />
+        </span>
+        <span className="slider__ticks" aria-hidden="true">
+          {stops.map((v) => (
+            <i key={v} className={v <= value ? 'is-on' : undefined} style={{ '--at': pOf(v) } as CSSProperties} />
+          ))}
+        </span>
+        <span className="slider__knob-rail">
+          <span
+            ref={knobRef}
+            className="slider__knob"
+            role="slider"
+            tabIndex={0}
+            aria-label={label}
+            aria-valuemin={min}
+            aria-valuemax={max}
+            aria-valuenow={value}
+            aria-valuetext={valueText?.(value)}
+            onKeyDown={onKey}
+          />
+        </span>
+      </div>
+      {marks && (
+        <div className="slider__marks">
+          {marks.map((m, i) => (
+            <button
+              key={m.value}
+              type="button"
+              className={`slider__mark${m.value === value ? ' is-on' : ''}${i === 0 ? ' is-first' : i === marks.length - 1 ? ' is-last' : ''}`}
+              style={{ '--at': pOf(m.value) } as CSSProperties}
+              onClick={() => onChange(m.value)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ——— Select (custom dropdown) ———
+export function Select<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+  placement = 'down',
+}: {
+  value: T;
+  options: { value: T; label: string; dot?: string }[];
+  onChange: (v: T) => void;
+  label: string;
+  placement?: 'down' | 'up';
+}) {
+  const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  const current = options.find((o) => o.value === value) ?? options[0];
+  return (
+    <div className="select" ref={ref}>
+      <button type="button" className="field__box select__btn" aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={() => setOpen((o) => !o)}>
+        {current?.dot && <span className="dot" style={{ background: current.dot }} />}
+        <span className="select__value">{current?.label}</span>
+        <Icon name="chevronDown" size={16} className="select__chev" />
+      </button>
+      {presence.mounted && (
+        <div className={`menu select__menu select__menu--${placement}${presence.closing ? ' is-closing' : ''}`} role="listbox" aria-label={label}>
+          {options.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={o.value === value}
+              className="menu__item"
+              onClick={() => {
+                onChange(o.value);
+                setOpen(false);
+              }}
+            >
+              {o.dot && <span className="dot" style={{ background: o.dot }} />}
+              <span className="grow">{o.label}</span>
+              {o.value === value && <Icon name="check" size={16} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -220,9 +413,24 @@ export const TeX = memo(function TeX({ tex, className = '' }: { tex: string; cla
   return html ? <span className={`tex ${className}`} dangerouslySetInnerHTML={{ __html: html }} /> : <span className={`tex tex--pending ${className}`} aria-busy="true" />;
 });
 
+/** Keeps a popover mounted for a moment after it closes so it can animate out. */
+function usePresence(open: boolean, ms = 120) {
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    const t = window.setTimeout(() => setMounted(false), ms);
+    return () => window.clearTimeout(t);
+  }, [open, ms]);
+  return { mounted: open || mounted, closing: !open && mounted };
+}
+
 // ——— Menu (popover) ———
 export function Menu({ label, icon = 'more', size = 's', children }: { label: string; icon?: IconName; size?: 'm' | 's'; children: (close: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false);
+  const presence = usePresence(open);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -242,8 +450,8 @@ export function Menu({ label, icon = 'more', size = 's', children }: { label: st
   return (
     <div className="menu-wrap" ref={ref}>
       <IconButton icon={icon} label={label} size={size} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} />
-      {open && (
-        <div className="menu" role="menu">
+      {presence.mounted && (
+        <div className={`menu${presence.closing ? ' is-closing' : ''}`} role="menu">
           {children(() => setOpen(false))}
         </div>
       )}

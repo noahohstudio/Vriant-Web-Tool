@@ -8,7 +8,8 @@ export type Route = 'intake' | 'review' | 'practice' | 'handin' | 'results' | 'a
 const ROUTES: Route[] = ['intake', 'review', 'practice', 'handin', 'results', 'archive'];
 export type Theme = 'signature' | 'light' | 'dark';
 export type Hue = 'clay' | 'ochre' | 'moss' | 'sky' | 'plum' | 'slate';
-const HUES: Hue[] = ['sky', 'ochre', 'clay', 'moss', 'plum', 'slate'];
+export const HUES: Hue[] = ['sky', 'ochre', 'clay', 'moss', 'plum', 'slate'];
+export const UNSORTED = 'unsorted';
 export type ClassItem = { id: string; name: string; hue: Hue };
 export type Tone = 'neutral' | 'correct' | 'partial' | 'incorrect';
 export type ArchiveItem = { id: string; title: string; classId: string; detail: string; createdAt: number; tone: Tone; label: string };
@@ -215,7 +216,10 @@ export const setSetup = (patch: Partial<Setup>) => set((s) => ({ ...s, setup: { 
 
 const newAttempt = (): Attempt => ({ answers: {}, choices: {}, flagged: {}, startedAt: Date.now(), current: 0 });
 const newSeed = () => Math.floor(Math.random() * 2 ** 31);
-const classIdFor = (s: State) => s.classes.find((c) => c.name === s.sheet?.course)?.id ?? s.classes[0]?.id ?? 'unsorted';
+/** The class a sheet files into by default: matching name, then Physics 1, then whatever exists. */
+export const pickClassId = (classes: ClassItem[], course?: string) =>
+  classes.find((c) => c.name === course)?.id ?? classes.find((c) => c.id === 'physics-1')?.id ?? classes[0]?.id ?? UNSORTED;
+const classIdFor = (s: State) => pickClassId(s.classes, s.sheet?.course);
 
 function startTest(questions: Question[], title: string) {
   const s = state;
@@ -287,9 +291,10 @@ export function practiceMissed() {
 export const fmtScore = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
 
 // ——— Archive ———
-export function fileResults(classId: string) {
+export function fileResults(requested: string) {
   const { test, results, sheet, classes, items } = state;
   if (!test || !results || !sheet) return;
+  const classId = classes.some((c) => c.id === requested) ? requested : pickClassId(classes);
   const n = test.questions.length;
   const ratio = results.score / n;
   const stamp = Date.now().toString(36);
@@ -301,8 +306,12 @@ export function fileResults(classId: string) {
   }
   const ids = new Set(added.map((a) => a.id));
   go('archive', (s) => ({ ...s, items: [...added, ...s.items], activeClass: classId, results: s.results && { ...s.results, filed: true } }));
-  toast(`Filed under ${classes.find((c) => c.id === classId)?.name ?? 'your archive'}`, () =>
-    set((s) => ({ ...s, items: s.items.filter((i) => !ids.has(i.id)), results: s.results && { ...s.results, filed: false } })),
+  window.setTimeout(
+    () =>
+      toast(`Filed under ${classes.find((c) => c.id === classId)?.name ?? 'your archive'}`, () =>
+        set((s) => ({ ...s, items: s.items.filter((i) => !ids.has(i.id)), results: s.results && { ...s.results, filed: false } })),
+      ),
+    320,
   );
 }
 
@@ -315,6 +324,37 @@ export function addClass(name: string) {
     const id = `c-${Date.now().toString(36)}`;
     return { ...s, classes: [...s.classes, { id, name: trimmed, hue: HUES[s.classes.length % HUES.length] }], activeClass: id };
   });
+}
+
+export function renameClass(id: string, name: string) {
+  const trimmed = name.trim().slice(0, 40);
+  const prev = state.classes.find((c) => c.id === id);
+  if (!prev || !trimmed || trimmed === prev.name || id === UNSORTED) return;
+  const rename = (to: string) => (s: State) => ({ ...s, classes: s.classes.map((c) => (c.id === id ? { ...c, name: to } : c)) });
+  set(rename(trimmed));
+  toast(`Renamed to “${trimmed}”`, () => set(rename(prev.name)));
+}
+
+export const setClassHue = (id: string, hue: Hue) => set((s) => ({ ...s, classes: s.classes.map((c) => (c.id === id ? { ...c, hue } : c)) }));
+
+/** Removing a class never removes work: its sheets move to Unsorted, and Undo puts everything back. */
+export function deleteClass(id: string) {
+  const index = state.classes.findIndex((c) => c.id === id);
+  if (index < 0 || id === UNSORTED) return;
+  const cls = state.classes[index];
+  const moved = new Set(state.items.filter((i) => i.classId === id).map((i) => i.id));
+  set((s) => {
+    const classes = s.classes.filter((c) => c.id !== id);
+    if (moved.size && !classes.some((c) => c.id === UNSORTED)) classes.push({ id: UNSORTED, name: 'Unsorted', hue: 'slate' });
+    return { ...s, classes, items: s.items.map((i) => (moved.has(i.id) ? { ...i, classId: UNSORTED } : i)), activeClass: s.activeClass === id ? UNSORTED : s.activeClass };
+  });
+  toast(`Deleted “${cls.name}”${moved.size ? ` · ${moved.size} ${moved.size === 1 ? 'sheet' : 'sheets'} moved to Unsorted` : ''}`, () =>
+    set((s) => {
+      const classes = [...s.classes];
+      classes.splice(Math.min(index, classes.length), 0, cls);
+      return { ...s, classes, items: s.items.map((i) => (moved.has(i.id) ? { ...i, classId: id } : i)), activeClass: id };
+    }),
+  );
 }
 
 export function moveItem(id: string, classId: string) {

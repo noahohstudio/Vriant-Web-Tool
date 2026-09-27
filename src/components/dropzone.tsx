@@ -5,9 +5,25 @@ type Phase = 'idle' | 'over' | 'scanning';
 const SCAN_MS = 1800;
 
 /** The intake stage: drag & drop, file picker, camera or paste. Scanning is a compositor-only animation. */
-export function Dropzone({ title, subtitle, onFile, allowSample }: { title: string; subtitle: string; onFile: (file: File | null) => void; allowSample?: boolean }) {
+const SHEET_PHASES = ['Finding each problem on the page', 'Reading the numbers and units', 'Getting your variants ready'];
+
+export function Dropzone({
+  title,
+  subtitle,
+  onFile,
+  allowSample,
+  scanTitle = 'Reading your sheet',
+  phases = SHEET_PHASES,
+}: {
+  title: string;
+  subtitle: string;
+  onFile: (file: File | null) => void;
+  allowSample?: boolean;
+  scanTitle?: string;
+  phases?: string[];
+}) {
   const [phase, setPhase] = useState<Phase>('idle');
-  const [found, setFound] = useState(0);
+  const [phase2, setPhase2] = useState(0);
   const depth = useRef(0);
   const timers = useRef<number[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -19,13 +35,9 @@ export function Dropzone({ title, subtitle, onFile, allowSample }: { title: stri
     if (phaseRef.current === 'scanning') return;
     depth.current = 0;
     setPhase('scanning');
-    setFound(0);
-    timers.current = [
-      window.setTimeout(() => setFound(2), 450),
-      window.setTimeout(() => setFound(4), 950),
-      window.setTimeout(() => setFound(6), 1400),
-      window.setTimeout(() => onFile(file), SCAN_MS),
-    ];
+    setPhase2(0);
+    const step = SCAN_MS / phases.length;
+    timers.current = [...phases.slice(1).map((_, i) => window.setTimeout(() => setPhase2(i + 1), step * (i + 1))), window.setTimeout(() => onFile(file), SCAN_MS)];
   };
   const startRef = useRef(start);
   startRef.current = start;
@@ -82,12 +94,18 @@ export function Dropzone({ title, subtitle, onFile, allowSample }: { title: stri
             {[56, 96, 80, 60, 96, 72, 50, 90].map((w, i) => (
               <i key={i} style={{ width: w }} />
             ))}
-            <b style={{ top: 10, animationDelay: '0.4s' }} />
-            <b style={{ top: 62, animationDelay: '0.9s' }} />
-            <b style={{ top: 114, animationDelay: '1.35s' }} />
+            <b style={{ top: 10, animationDelay: '0.45s' }} />
+            <b style={{ top: 62, animationDelay: '0.95s' }} />
+            <b style={{ top: 114, animationDelay: '1.4s' }} />
+            <span className="dz-sheet__scan" />
           </div>
-          <p className="t-heading-s">Reading your sheet…</p>
-          <p className="t-body-s c-tertiary">{found ? `Found ${found} problems so far` : 'Looking for problems'}</p>
+          <p className="t-heading-s">{scanTitle}…</p>
+          <p className="t-body-s c-tertiary dz-caption" key={phase2}>
+            {phases[phase2]}
+          </p>
+          <span className="dz-loader">
+            <i />
+          </span>
         </div>
       ) : (
         <div className="dz-body">
@@ -119,10 +137,6 @@ export function Dropzone({ title, subtitle, onFile, allowSample }: { title: stri
         </div>
       )}
 
-      {phase === 'scanning' && <span className="dz-scanline" aria-hidden="true" />}
-      <span className={`dz-progress${phase === 'scanning' ? ' is-running' : ''}`} aria-hidden="true">
-        <i />
-      </span>
 
       <input ref={fileRef} type="file" accept="application/pdf,image/*" hidden onChange={pick} />
       <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={pick} />

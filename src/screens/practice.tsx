@@ -221,7 +221,13 @@ export function HandInMain() {
         </section>
         <section className="stack-12">
           <span className="t-mono-label c-tertiary">Option B — on paper</span>
-          <Dropzone title="Drop your finished sheet" subtitle="Photo or PDF · we match each answer to its question" onFile={() => handIn('paper')} />
+          <Dropzone
+            title="Drop your finished sheet"
+            subtitle="Photo or PDF · we match each answer to its question"
+            scanTitle="Reading your answers"
+            phases={['Matching answers to questions', 'Checking units and significant figures', 'Marking your work']}
+            onFile={() => handIn('paper')}
+          />
           <p className="notice">
             <Icon name="scan" size={16} />
             Prototype: paper grading reads the answers you typed.

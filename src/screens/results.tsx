@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { GradedAnswer, Prompt, WorkedSolution } from '../components/question';
 import { fmtTime, RailRow } from '../components/shell';
-import { Button, Icon, Mark, SectionLabel, Tag } from '../components/ui';
+import { Button, Icon, Mark, SectionLabel, Select, Tag } from '../components/ui';
 import { fmtSig, POINTS, TEMPLATES, withUnit, type Grade, type Question } from '../lib/problems';
 import { fileResults, fmtScore, focusResult, practiceMissed, trySimilar, useStore } from '../lib/store';
 
@@ -43,6 +43,7 @@ export function ResultsMain() {
   const toReview = useMemo(() => (test && results ? test.questions.filter((q) => results.grades[q.id].result !== 'correct') : []), [test, results]);
   if (!test || !results) return null;
 
+  const target = classes.find((c) => c.id === classId)?.id ?? classes[0]?.id ?? '';
   const n = test.questions.length;
   const pct = Math.round((results.score / n) * 100);
   const miss = toReview.length;
@@ -126,17 +127,14 @@ export function ResultsMain() {
             <span className="t-body-s c-tertiary">File the test and its sheet under a class. Otherwise it’s gone when you close the tab.</span>
           </div>
           <div className="keep__row">
-            <label className="field__box field__box--s">
-              <select className="field__input" value={classId} aria-label="Class" onChange={(e) => setClassId(e.target.value)}>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <Icon name="chevronDown" size={16} className="c-tertiary" />
-            </label>
-            <Button variant="secondary" icon={results.filed ? 'check' : 'folder'} disabled={results.filed} onClick={() => fileResults(classId)}>
+            <Select
+              label="Class"
+              placement="up"
+              value={target}
+              onChange={setClassId}
+              options={classes.map((c) => ({ value: c.id, label: c.name, dot: `var(--tag-${c.hue})` }))}
+            />
+            <Button variant="secondary" icon={results.filed ? 'check' : 'folder'} disabled={results.filed} onClick={() => fileResults(target)}>
               {results.filed ? 'Filed' : 'Archive it'}
             </Button>
           </div>

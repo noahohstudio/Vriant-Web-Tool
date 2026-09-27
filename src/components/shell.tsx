@@ -9,6 +9,7 @@ const THEMES: { value: Theme; label: string; icon: IconName; iconOnly: true }[] 
   { value: 'dark', label: 'Dark', icon: 'moon', iconOnly: true },
 ];
 
+/** Fixed-width icons, so nothing shifts; each theme's name shows as a tooltip after a short hover. */
 function ThemeSwitch() {
   const theme = useStore((s) => s.theme);
   return <Segmented label="Theme" className="seg--theme" options={THEMES} value={theme} onChange={setTheme} />;
