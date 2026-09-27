@@ -401,3 +401,4 @@ There are 38 components plus 30 icons, 175 variants in total. Every fill and str
 | 2026-09-26 | **Oat** chosen as the signature paper over Chalk & Ink, Sage & Pine and Legal pad. |
 | 2026-09-26 | Placeholder logo: the incline mark + "vriant" wordmark. |
 | 2026-09-26 | Desktop flow v1 laid out: Intake → Review scan → Practice → Hand in → Results → Archive. |
+| 2026-09-27 | Working prototype added (Vite + React + TS; see README). Variants, grading and worked solutions are real; scanning and paper hand-in are simulated. Theme and screen changes use View Transitions; all motion is transform/opacity only. |

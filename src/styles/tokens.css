@@ -1,0 +1,129 @@
+/* Vriant tokens v0.1 — exported from the Figma variables (Theme / Scale). See HANDOFF.md §6.
+   The theme lives on <html data-theme="signature | light | dark">. Signature is the default. */
+
+:root,
+[data-theme="signature"] {
+  color-scheme: light;
+  --bg-canvas: #ECE5D8;
+  --bg-surface: #F3EEE4;
+  --bg-sunken: #E2D9C8;
+  --bg-raised: #FDFBF7;
+  --bg-inverse: #1C1B19;
+  --bg-tint: rgba(28, 27, 25, 0.06);
+  --bg-tint-strong: rgba(28, 27, 25, 0.10);
+  --bg-scrim: rgba(28, 27, 25, 0.40);
+
+  --text-primary: #1C1B19;
+  --text-secondary: #6A604F;
+  --text-tertiary: #847862;
+  --text-inverse: #F3EEE4;
+  --text-on-accent: #FFFFFF;
+
+  --line-rule: rgba(28, 27, 25, 0.12);
+  --line-divider: rgba(28, 27, 25, 0.10);
+  --line-strong: rgba(28, 27, 25, 0.24);
+  --line-node: rgba(28, 27, 25, 0.40);
+
+  --accent-default: #3348D4;
+  --accent-hover: #2839B5;
+  --accent-subtle: rgba(51, 72, 212, 0.10);
+  --focus-ring: var(--accent-default);
+  --highlight-bg: rgba(242, 193, 78, 0.45);
+
+  --status-correct: #2A7049;
+  --status-correct-subtle: rgba(42, 112, 73, 0.12);
+  --status-partial: #8F5B12;
+  --status-partial-subtle: rgba(201, 138, 27, 0.18);
+  --status-incorrect: #B53A2A;
+  --status-incorrect-subtle: rgba(181, 58, 42, 0.12);
+
+  --button-primary-bg: #1C1B19;
+  --button-primary-bg-hover: #45423E;
+  --button-primary-fg: #F3EEE4;
+
+  --tag-clay: #C2704E;
+  --tag-ochre: #C69326;
+  --tag-moss: #6F9150;
+  --tag-sky: #4F86C0;
+  --tag-plum: #8A65A8;
+  --tag-slate: #6B7885;
+}
+
+[data-theme="light"] {
+  --bg-canvas: #FBFAF8;
+  --bg-surface: #FFFFFF;
+  --bg-sunken: #EDEBE7;
+  --bg-raised: #FFFFFF;
+  --text-secondary: #5D5A54;
+  --text-tertiary: #7C7870;
+  --text-inverse: #FBFAF8;
+  --line-rule: rgba(28, 27, 25, 0.10);
+  --line-divider: rgba(28, 27, 25, 0.08);
+  --line-strong: rgba(28, 27, 25, 0.20);
+  --line-node: rgba(28, 27, 25, 0.32);
+  --button-primary-fg: #FFFFFF;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-canvas: #151413;
+  --bg-surface: #1C1B19;
+  --bg-sunken: #0F0E0D;
+  --bg-raised: #262523;
+  --bg-inverse: #ECE5D8;
+  --bg-tint: rgba(236, 229, 216, 0.08);
+  --bg-tint-strong: rgba(236, 229, 216, 0.12);
+  --bg-scrim: rgba(0, 0, 0, 0.60);
+
+  --text-primary: #ECE5D8;
+  --text-secondary: #A09C94;
+  --text-tertiary: #7C7870;
+  --text-inverse: #1C1B19;
+  --text-on-accent: #131A4E;
+
+  --line-rule: rgba(236, 229, 216, 0.10);
+  --line-divider: rgba(236, 229, 216, 0.08);
+  --line-strong: rgba(236, 229, 216, 0.24);
+  --line-node: rgba(236, 229, 216, 0.40);
+
+  --accent-default: #8E9BEC;
+  --accent-hover: #B9C2F4;
+  --accent-subtle: rgba(142, 155, 236, 0.16);
+  --highlight-bg: rgba(242, 193, 78, 0.28);
+
+  --status-correct: #7BD3A0;
+  --status-correct-subtle: rgba(123, 211, 160, 0.16);
+  --status-partial: #E8B55C;
+  --status-partial-subtle: rgba(232, 181, 92, 0.20);
+  --status-incorrect: #F2897A;
+  --status-incorrect-subtle: rgba(242, 137, 122, 0.16);
+
+  --button-primary-bg: #ECE5D8;
+  --button-primary-bg-hover: #D2C6B1;
+  --button-primary-fg: #151413;
+}
+
+:root {
+  --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-12: 12px; --space-16: 16px;
+  --space-20: 20px; --space-24: 24px; --space-32: 32px; --space-40: 40px; --space-48: 48px; --space-64: 64px;
+
+  --radius-xs: 4px; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 24px; --radius-full: 999px;
+
+  --size-control-sm: 32px; --size-control-md: 40px; --size-control-lg: 48px;
+  --size-header: 64px; --size-footer: 40px; --size-rail: 280px;
+
+  --font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --shadow-raised: 0 1px 2px rgba(28, 27, 25, 0.06), 0 2px 6px -2px rgba(28, 27, 25, 0.08);
+  --shadow-popover: 0 2px 6px -2px rgba(28, 27, 25, 0.08), 0 12px 32px -8px rgba(28, 27, 25, 0.22);
+  --shadow-drag: 0 24px 48px -12px rgba(28, 27, 25, 0.28);
+  --focus-shadow: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--focus-ring);
+
+  /* Motion: everything that moves uses transform/opacity only (compositor-friendly). */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-theme: 420ms;
+}
