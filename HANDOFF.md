@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.3 · working prototype on `main` · last updated 27 Sep 2026 · describes the code at commit `cb837bf`
+> **Status:** v0.3 · working prototype on `main` · last updated 27 Sep 2026 · describes the code at commit `dc809b1`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -249,7 +249,7 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 | 03 | [Practice](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1565) | One question card at a time. A Variant tag names the source problem; changed values are in ink. The hint expands smoothly. Keyboard shortcuts work, and one press moves one step (250 ms guard). The rail lists every question; the aside shows answered, flagged, difficulty and "Hand in early". |
 | 04 | [Hand in](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1622) | **Typed** (instant) or **paper** (scan the sheet — simulated). Blanks count as skipped. |
 | 05 | [Results](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1678) | Score summary, the to-review list and per-question detail: the student's answer, the expected value, feedback and the worked solution. Buttons for "Try a similar one" and "Practice these again". **Keep it?** Pick a class from a custom dropdown and archive it. Once filed, or when reopened from the archive, this shows "Filed under [class]" with a "View in archive" button. |
-| 06 | [Archive](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1734) | Search, filter (All / Graded / Not graded), class folders and sheet rows. **Class menu** ("…" on each folder, and on rail rows when hovered): Rename (inline), Colour, Delete class…. The folder grid ends with a "New class" tile. **Archived tests reopen:** click a filed test to review its results; click a source sheet to make a new test. The Intake rail's Recent list opens items directly. Sheet menu: Review results, New test from this sheet, Move to, Delete… (confirm). Opening an archived item over an unfinished test offers Undo, which returns you to that test. Toasts offer Undo. |
+| 06 | [Archive](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1734) | Search, filter (All / Graded / Not graded), class folders and sheet rows. **Class menu** ("…" on each folder, and on rail rows when hovered): Rename (inline), Colour, Delete class…. The folder grid ends with a "New class" tile. **Archived tests reopen:** click a filed test to review its results; click a source sheet to make a new test. Each row's status sits flush right; on hover or keyboard focus it gives way to a hint naming what a click does ("Review results" or "Make a new test"). The Intake rail's Recent list opens items directly. Sheet menu: Review results, New test from this sheet, Move to, Delete… (confirm). Opening an archived item over an unfinished test offers Undo, which returns you to that test. Toasts offer Undo. |
 
 **States not designed or built yet:** a blurry or unreadable scan, "no problems found", an unsupported file, a slow or failed scan, low-confidence grading, offline, and very long prompts or figures. Mobile and camera-first capture isn't built either.
 
@@ -268,7 +268,7 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
    - One **Segmented** control with a sliding thumb (theme switch, filters, Off / On).
    - A custom **Slider** (knob follows the pointer, then glides to the nearest stop).
    - A custom **Select** (popover with enter and exit animation).
-   - No native `<select>`, no default switches, **no visible scroll bars** (areas still scroll).
+   - No native `<select>`, no default switches, **no visible scroll bars**. Areas still scroll, but only vertically: the rail and split columns clip sideways overflow, so nothing can slide out of bounds.
 4. **Labels never shift layout.** Controls keep fixed labels. Icon-only controls reveal their names as a tooltip after about 0.4 s.
 5. **Menus and popovers animate in and out.** Anything holding an open menu is raised above its neighbours.
 6. **Be honest about simulation.** Anything faked says so on screen, in a highlighted notice.
@@ -360,11 +360,11 @@ When a token changes, update Figma and `tokens.css` together.
 |---|---|---|
 | Button, IconButton | `components/ui.tsx` | Pills; one Primary per view; icon buttons carry tooltips |
 | **Segmented** | `components/ui.tsx` | One measured, sliding thumb. Supports icon-only options, which show their name on hover. Used by the theme switch, the Archive filter and Time myself (Off / On) |
-| **Slider** | `components/ui.tsx` | Drag, click on the track, keyboard (arrows, Page Up/Down, Home, End); optional labelled stops |
+| **Slider** | `components/ui.tsx` | Drag, click on the track, keyboard (arrows, Page Up/Down, Home, End); optional labelled stops. The knob's box is knob-sized and moves by transform (container units), so it never overhangs the track |
 | **Select** | `components/ui.tsx` | Custom dropdown; opens up or down; animates in and out |
 | Menu, MenuItem | `components/ui.tsx` | Popover with exit animation. Class menu: Rename, Colour, Delete; sheet menu: Move, Delete |
 | Checkbox, Tag, ClassTag, Mark, Kbd, TeX | `components/ui.tsx` | TeX loads KaTeX on demand |
-| SheetRow (archive) | `screens/archive.tsx` | Whole row opens the item when it has a snapshot; the hover hint says what will happen ("Review results" or "Make a new test") |
+| SheetRow (archive) | `screens/archive.tsx` | Whole row opens the item when it has a snapshot. The status tag sits flush right; on hover or focus it gives way to a hint saying what will happen ("Review results" or "Make a new test"). Both share one slot, so nothing shifts |
 | Dropzone | `components/dropzone.tsx` | Idle, drag-over and scanning states. Props: `scanTitle`, `phases`, `allowSample` |
 | QuestionCard, TestProgress, GradedAnswer, WorkedSolution | `components/question.tsx` | Hint uses the smooth reveal |
 | Header, RailRow, ToastHost, Elapsed | `components/shell.tsx` | Toasts offer Undo |
@@ -398,6 +398,7 @@ It's missing:
 - the class menu and the New class tile
 - the new scanning animation
 - the hint reveal
+- the Sheet Row hover hint (its Hover state still shows the status; in code the status gives way to "Review results" / "Make a new test")
 
 Update the Figma components to match.
 
@@ -425,3 +426,5 @@ Update the Figma components to match.
 | 2026-09-27 | Scroll bars hidden app-wide; areas still scroll. |
 | 2026-09-27 | This handoff restructured around the next focus (scanning and generation); `npm run check:generator` added; the "update after every push" rule added. |
 | 2026-09-27 | Archived tests can be revisited: filing stores a snapshot; tests reopen on Results and source sheets reopen in Review. Replacing an unfinished test offers Undo. |
+| 2026-09-27 | Archive rows: the status sits flush right, as in Figma. On hover or focus it gives way to the "Review results" / "Make a new test" hint, rather than the hidden hint pushing every status left. |
+| 2026-09-27 | Scroll areas scroll vertically only. The slider knob no longer overhangs its track; that overhang had let the Review setup column slide sideways. |
