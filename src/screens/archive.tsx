@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { countBy, fmtDate, plural, RailRow } from '../components/shell';
 import { Button, ClassTag, Icon, Menu, MenuItem, SectionLabel, Segmented, Tag } from '../components/ui';
-import { addClass, deleteClass, deleteItem, HUES, moveItem, renameClass, setActiveClass, setClassHue, UNSORTED, useStore, type ArchiveItem, type ClassItem } from '../lib/store';
+import { addClass, deleteClass, deleteItem, HUES, moveItem, openArchived, renameClass, setActiveClass, setClassHue, UNSORTED, useStore, type ArchiveItem, type ClassItem } from '../lib/store';
 
 type Filter = 'all' | 'graded' | 'ungraded';
 const hueVar = (cls: ClassItem) => ({ '--hue': `var(--tag-${cls.hue})` }) as CSSProperties;
@@ -195,8 +195,32 @@ function SheetMenuBody({ item, close }: { item: ArchiveItem; close: () => void }
       </>
     );
   }
+  const hasTest = !!item.data?.test;
   return (
     <>
+      {hasTest && (
+        <MenuItem
+          icon="arrowRight"
+          onSelect={() => {
+            close();
+            openArchived(item.id, 'results');
+          }}
+        >
+          Review results
+        </MenuItem>
+      )}
+      {item.data && (
+        <MenuItem
+          icon="shuffle"
+          onSelect={() => {
+            close();
+            openArchived(item.id, 'newTest');
+          }}
+        >
+          New test from this sheet
+        </MenuItem>
+      )}
+      {item.data && <div className="menu__divider" />}
       <p className="menu__note">Move to</p>
       {classes
         .filter((c) => c.id !== item.classId)
@@ -222,8 +246,11 @@ function SheetMenuBody({ item, close }: { item: ArchiveItem; close: () => void }
 
 function SheetRow({ item }: { item: ArchiveItem }) {
   const cls = useStore((s) => s.classes.find((c) => c.id === item.classId));
+  const openable = !!item.data;
+  const action = item.data?.test ? 'Review results' : 'Make a new test';
   return (
-    <li className="sheet-row">
+    <li className={`sheet-row${openable ? ' sheet-row--open' : ''}`}>
+      {openable && <button type="button" className="sheet-row__hit" aria-label={`${action}: ${item.title}`} onClick={() => openArchived(item.id, item.data?.test ? 'results' : 'newTest')} />}
       <span className="sheet-row__thumb" aria-hidden="true">
         <i />
         <i />
@@ -240,6 +267,12 @@ function SheetRow({ item }: { item: ArchiveItem }) {
         </span>
       </span>
       <Tag tone={item.tone}>{item.label}</Tag>
+      {openable && (
+        <span className="sheet-row__go" aria-hidden="true">
+          {action}
+          <Icon name="chevronRight" size={16} />
+        </span>
+      )}
       <Menu label={`Actions for ${item.title}`}>{(close) => <SheetMenuBody item={item} close={close} />}</Menu>
     </li>
   );

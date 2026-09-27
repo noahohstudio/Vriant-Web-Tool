@@ -54,7 +54,7 @@ import { Dropzone } from '../components/dropzone';
 import { countBy, fmtDate, fmtTime, RailRow } from '../components/shell';
 import { Button, Checkbox, ClassTag, Icon, SectionLabel, Segmented, Slider } from '../components/ui';
 import { problemText, TEMPLATES, type Difficulty, type Sheet } from '../lib/problems';
-import { generate, go, loadSheet, pickClassId, setActiveClass, setPage, setSetup, toggleProblem, useStore, type Upload } from '../lib/store';
+import { generate, go, loadSheet, openArchived, pickClassId, setActiveClass, setPage, setSetup, toggleProblem, useStore, type Upload } from '../lib/store';
 
 function onFile(file: File | null) {
   if (!file) return loadSheet(null);
@@ -92,7 +92,7 @@ export function IntakeRail() {
       <SectionLabel index="01" title="Recent" meta={String(recent.length)} />
       <div className="rail-list">
         {recent.map((i) => (
-          <RailRow key={i.id} dot={hueOf(i.classId)} label={i.title} meta={fmtDate(i.createdAt)} onClick={() => open(i.classId)} />
+          <RailRow key={i.id} dot={hueOf(i.classId)} label={i.title} meta={fmtDate(i.createdAt)} onClick={() => (i.data ? openArchived(i.id, i.data.test ? 'results' : 'newTest') : open(i.classId))} />
         ))}
       </div>
       <SectionLabel index="02" title="Classes" meta={String(classes.length)} />

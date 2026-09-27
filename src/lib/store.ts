@@ -12,11 +12,13 @@ export const HUES: Hue[] = ['sky', 'ochre', 'clay', 'moss', 'plum', 'slate'];
 export const UNSORTED = 'unsorted';
 export type ClassItem = { id: string; name: string; hue: Hue };
 export type Tone = 'neutral' | 'correct' | 'partial' | 'incorrect';
-export type ArchiveItem = { id: string; title: string; classId: string; detail: string; createdAt: number; tone: Tone; label: string };
+/** What an archive entry can bring back: a whole graded test, or just its source sheet. */
+export type ArchivedData = { sheet: Sheet; test?: Test; attempt?: Attempt; results?: Results };
+export type ArchiveItem = { id: string; title: string; classId: string; detail: string; createdAt: number; tone: Tone; label: string; kind?: 'test' | 'sheet'; data?: ArchivedData };
 export type Setup = { selected: Record<number, boolean>; count: number; difficulty: Difficulty; timer: boolean };
 export type Test = { id: string; title: string; sheetTitle: string; classId: string; createdAt: number; questions: Question[]; timer: boolean };
 export type Attempt = { answers: Record<string, string>; choices: Record<string, number>; flagged: Record<string, boolean>; startedAt: number; current: number };
-export type Results = { grades: Record<string, Grade>; score: number; counts: Record<Result, number>; gradedAt: number; via: 'typed' | 'paper'; filed: boolean };
+export type Results = { grades: Record<string, Grade>; score: number; counts: Record<Result, number>; gradedAt: number; via: 'typed' | 'paper'; filed: boolean; filedTo?: string };
 export type Toast = { id: number; message: string; undo?: () => void };
 export type Upload = { name: string; url: string | null; kind: 'image' | 'pdf' | 'other' };
 
@@ -292,27 +294,66 @@ export const fmtScore = (x: number) => (Number.isInteger(x) ? String(x) : x.toFi
 
 // ——— Archive ———
 export function fileResults(requested: string) {
-  const { test, results, sheet, classes, items } = state;
-  if (!test || !results || !sheet) return;
+  const { test, results, sheet, attempt, classes, items } = state;
+  if (!test || !results || !sheet || !attempt) return;
   const classId = classes.some((c) => c.id === requested) ? requested : pickClassId(classes);
   const n = test.questions.length;
   const ratio = results.score / n;
   const stamp = Date.now().toString(36);
+  const filed: Results = { ...results, filed: true, filedTo: classId };
   const added: ArchiveItem[] = [
-    { id: `a-${stamp}`, title: test.title, classId, detail: `${n} questions`, createdAt: Date.now(), tone: ratio >= 0.85 ? 'correct' : ratio >= 0.5 ? 'partial' : 'incorrect', label: `${fmtScore(results.score)}/${n}` },
+    {
+      id: `a-${stamp}`,
+      kind: 'test',
+      title: test.title,
+      classId,
+      detail: `${n} questions`,
+      createdAt: Date.now(),
+      tone: ratio >= 0.85 ? 'correct' : ratio >= 0.5 ? 'partial' : 'incorrect',
+      label: `${fmtScore(results.score)}/${n}`,
+      data: { sheet, test, attempt, results: filed },
+    },
   ];
   if (!items.some((i) => i.title === sheet.title && i.classId === classId)) {
-    added.push({ id: `a-${stamp}-s`, title: sheet.title, classId, detail: `${sheet.problems.length} problems`, createdAt: sheet.scannedAt, tone: 'neutral', label: 'Source sheet' });
+    added.push({ id: `a-${stamp}-s`, kind: 'sheet', title: sheet.title, classId, detail: `${sheet.problems.length} problems`, createdAt: sheet.scannedAt, tone: 'neutral', label: 'Source sheet', data: { sheet } });
   }
   const ids = new Set(added.map((a) => a.id));
-  go('archive', (s) => ({ ...s, items: [...added, ...s.items], activeClass: classId, results: s.results && { ...s.results, filed: true } }));
+  go('archive', (s) => ({ ...s, items: [...added, ...s.items], activeClass: classId, results: s.results && { ...s.results, filed: true, filedTo: classId } }));
   window.setTimeout(
     () =>
       toast(`Filed under ${classes.find((c) => c.id === classId)?.name ?? 'your archive'}`, () =>
-        set((s) => ({ ...s, items: s.items.filter((i) => !ids.has(i.id)), results: s.results && { ...s.results, filed: false } })),
+        set((s) => ({ ...s, items: s.items.filter((i) => !ids.has(i.id)), results: s.results && { ...s.results, filed: false, filedTo: undefined } })),
       ),
     320,
   );
+}
+
+/** Reopen something from the archive: a filed test opens on Results; a source sheet opens in Review for a new test.
+ *  Whatever was in progress is replaced, with Undo to get it back. */
+export function openArchived(id: string, mode: 'results' | 'newTest' = 'results') {
+  const item = state.items.find((i) => i.id === id);
+  const data = item?.data;
+  if (!item || !data) return;
+  const prev = { route: state.route, sheet: state.sheet, upload: state.upload, page: state.page, setup: state.setup, test: state.test, attempt: state.attempt, results: state.results, focus: state.focus };
+  const replacing = !!prev.test && prev.test.id !== data.test?.id;
+  if (mode === 'results' && data.test && data.attempt && data.results) {
+    const { test, attempt, results } = data;
+    const firstMiss = test.questions.find((q) => results.grades[q.id]?.result !== 'correct') ?? test.questions[0];
+    go('results', (s) => ({ ...s, sheet: data.sheet, upload: null, test, attempt, results: { ...results, filed: true, filedTo: item.classId }, focus: firstMiss.id }));
+  } else {
+    go('review', (s) => ({ ...s, sheet: { ...data.sheet, scannedAt: Date.now() }, upload: null, page: 1, setup: { ...DEFAULT_SETUP, timer: s.setup.timer }, test: null, attempt: null, results: null, focus: null }));
+  }
+  if (replacing) {
+    window.setTimeout(
+      () =>
+        toast(`Opened “${item.title}”`, () => {
+          set((s) => ({ ...s, ...prev }));
+          // Undo takes you back to the work you left, not just the screen you clicked from.
+          go(prev.results ? 'results' : prev.attempt ? 'practice' : prev.route);
+        }),
+      320,
+    );
+  }
 }
 
 export const setActiveClass = (id: string) => set((s) => ({ ...s, activeClass: id }));

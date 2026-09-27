@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { GradedAnswer, Prompt, WorkedSolution } from '../components/question';
 import { fmtTime, RailRow } from '../components/shell';
-import { Button, Icon, Mark, SectionLabel, Select, Tag } from '../components/ui';
+import { Button, ClassTag, Icon, Mark, SectionLabel, Select, Tag } from '../components/ui';
 import { fmtSig, POINTS, TEMPLATES, withUnit, type Grade, type Question } from '../lib/problems';
-import { fileResults, fmtScore, focusResult, practiceMissed, trySimilar, useStore } from '../lib/store';
+import { fileResults, fmtScore, focusResult, go, practiceMissed, setActiveClass, trySimilar, useStore } from '../lib/store';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
@@ -44,6 +44,7 @@ export function ResultsMain() {
   if (!test || !results) return null;
 
   const target = classes.find((c) => c.id === classId)?.id ?? classes[0]?.id ?? '';
+  const filedClass = classes.find((c) => c.id === results.filedTo);
   const n = test.questions.length;
   const pct = Math.round((results.score / n) * 100);
   const miss = toReview.length;
@@ -121,24 +122,44 @@ export function ResultsMain() {
           <p className="t-body-s c-tertiary">Nothing to review — every answer was right.</p>
         )}
 
-        <div className="keep">
-          <div className="stack-4">
-            <span className="t-label-m">Keep it?</span>
-            <span className="t-body-s c-tertiary">File the test and its sheet under a class. Otherwise it’s gone when you close the tab.</span>
-          </div>
-          <div className="keep__row">
-            <Select
-              label="Class"
-              placement="up"
-              value={target}
-              onChange={setClassId}
-              options={classes.map((c) => ({ value: c.id, label: c.name, dot: `var(--tag-${c.hue})` }))}
-            />
-            <Button variant="secondary" icon={results.filed ? 'check' : 'folder'} disabled={results.filed} onClick={() => fileResults(target)}>
-              {results.filed ? 'Filed' : 'Archive it'}
+        {results.filed ? (
+          <div className="keep keep--filed">
+            <Icon name="folder" size={16} className="c-tertiary" />
+            <span className="t-body-s c-secondary">Filed under</span>
+            {filedClass && <ClassTag hue={filedClass.hue}>{filedClass.name}</ClassTag>}
+            <span className="spacer" />
+            <Button
+              variant="ghost"
+              size="s"
+              trailing="arrowRight"
+              onClick={() => {
+                if (filedClass) setActiveClass(filedClass.id);
+                go('archive');
+              }}
+            >
+              View in archive
             </Button>
           </div>
-        </div>
+        ) : (
+          <div className="keep">
+            <div className="stack-4">
+              <span className="t-label-m">Keep it?</span>
+              <span className="t-body-s c-tertiary">File the test and its sheet under a class, so you can come back to it. Otherwise it’s gone when you close the tab.</span>
+            </div>
+            <div className="keep__row">
+              <Select
+                label="Class"
+                placement="up"
+                value={target}
+                onChange={setClassId}
+                options={classes.map((c) => ({ value: c.id, label: c.name, dot: `var(--tag-${c.hue})` }))}
+              />
+              <Button variant="secondary" icon="folder" onClick={() => fileResults(target)}>
+                Archive it
+              </Button>
+            </div>
+          </div>
+        )}
       </section>
 
       <div className="split__rule" aria-hidden="true" />
