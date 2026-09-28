@@ -51,11 +51,12 @@ function QuestionCount({ value, onChange }: { value: number; onChange: (n: numbe
   );
 }
 import { Dropzone } from '../components/dropzone';
-import { countBy, fmtDate, fmtTime, RailRow } from '../components/shell';
-import { Button, Checkbox, ClassTag, Icon, SectionLabel, Segmented, Slider } from '../components/ui';
-import { conceptName } from '../bank/taxonomy';
+import { countBy, fmtDate, fmtTime, plural, RailRow } from '../components/shell';
+import { Button, Checkbox, ClassTag, Icon, SectionLabel, Segmented, Slider, Tag } from '../components/ui';
+import { CONCEPTS, conceptName } from '../bank/taxonomy';
 import { problemText, type Difficulty, type Sheet } from '../lib/problems';
-import { generate, go, loadSheet, openArchived, pickClassId, setActiveClass, setPage, setSetup, toggleProblem, useStore, type Upload } from '../lib/store';
+import { generate, go, loadSheet, openArchived, pickClassId, practiceTopics, setActiveClass, setPage, setSetup, toggleProblem, useStore, type Upload } from '../lib/store';
+import { NotYet } from './topics';
 
 function onFile(file: File | null) {
   if (!file) return loadSheet(null);
@@ -73,6 +74,12 @@ export function IntakeMain() {
         <p className="t-body-l c-secondary measure">We’ll find the problems, write new versions with different numbers, and grade them when you hand the test back.</p>
       </div>
       <Dropzone title="Drop in your homework" subtitle="PDF, PNG or JPG · up to 20 pages · handwriting is fine" onFile={onFile} allowSample />
+      <div className="row">
+        <Button variant="secondary" icon="search" onClick={() => go('topics')}>
+          Pick topics instead
+        </Button>
+        <span className="t-body-s c-tertiary">No sheet handy? Choose what you’re studying.</span>
+      </div>
       <p className="t-mono-s c-tertiary">Tips — flat, well-lit photos · one sheet per upload · handwriting is fine</p>
     </div>
   );
@@ -176,6 +183,39 @@ function UploadPreview({ upload }: { upload: Upload }) {
   );
 }
 
+/** Picked topics in place of a scanned page. Topics without problems yet say so and offer a swap. */
+function TopicSheet({ sheet }: { sheet: Sheet }) {
+  const ids = sheet.problems.map((p) => p.concept).filter((id): id is string => !!id);
+  return (
+    <div className="stack-12">
+      <ul className="topic-list">
+        {sheet.problems.map((p) => {
+          const c = p.concept ? CONCEPTS.get(p.concept) : undefined;
+          if (!c) return null;
+          return (
+            <li key={p.n} className={`topic-row${p.supported ? '' : ' is-off'}`}>
+              <div className="topic-row__main">
+                <span className="topic-row__name">{c.name}</span>
+                <span className="spacer" />
+                <span className="t-body-s c-tertiary topic-row__meta">
+                  {c.course.code} · {c.unit.label}
+                </span>
+                {!p.supported && <Tag tone="neutral">Not yet</Tag>}
+              </div>
+              {!p.supported && <NotYet concept={c} onPick={(id) => practiceTopics([...ids.filter((x) => x !== c.id && x !== id), id])} />}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="row">
+        <Button variant="secondary" icon="search" onClick={() => go('topics')}>
+          Change topics
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ReviewMain() {
   const sheet = useStore((s) => s.sheet);
   const upload = useStore((s) => s.upload);
@@ -183,24 +223,28 @@ export function ReviewMain() {
   const setup = useStore((s) => s.setup);
   const [busy, setBusy] = useState(false);
   if (!sheet) return null;
+  const topics = sheet.source === 'topics';
+  const n = sheet.problems.length;
   const picked = sheet.problems.filter((p) => p.supported && p.concept && setup.selected[p.n]).length;
   return (
     <div className="screen screen--split">
       <section className="split__left">
-        <SectionLabel index="02" title="Detected" meta={`${sheet.problems.length} problems · page ${page} of ${sheet.pages}`} />
-        {upload ? <UploadPreview upload={upload} /> : <Paper sheet={sheet} page={page} selected={setup.selected} />}
+        <SectionLabel index="02" title={topics ? 'Topics' : 'Detected'} meta={topics ? plural(n, 'topic') : `${n} problems · page ${page} of ${sheet.pages}`} />
+        {topics ? <TopicSheet sheet={sheet} /> : upload ? <UploadPreview upload={upload} /> : <Paper sheet={sheet} page={page} selected={setup.selected} />}
       </section>
       <div className="split__rule" aria-hidden="true" />
       <section className="split__right">
         <SectionLabel index="03" title="Make a test" />
         <div className="stack-6">
-          <h2 className="t-heading-s">We found {sheet.problems.length} problems</h2>
-          <p className="t-body-s c-secondary">Pick what goes into the test. Sketches and proofs aren’t supported yet.</p>
+          <h2 className="t-heading-s">{topics ? `${plural(n, 'topic')} to practice` : `We found ${n} problems`}</h2>
+          <p className="t-body-s c-secondary">{topics ? 'Untick any you want to leave out.' : 'Pick what goes into the test. Sketches and proofs aren’t supported yet.'}</p>
         </div>
         <div className="stack-10">
           {sheet.problems.map((p) => (
             <Checkbox key={p.n} checked={p.supported && !!p.concept && !!setup.selected[p.n]} disabled={!p.supported || !p.concept} onChange={() => toggleProblem(p.n)}>
-              Q{p.n} · {p.concept ? conceptName(p.concept) : (p.reason ?? 'not supported yet')}
+              {topics ? '' : `Q${p.n} · `}
+              {p.concept ? conceptName(p.concept) : (p.reason ?? 'not supported yet')}
+              {topics && !p.supported ? ' — not in Vriant yet' : ''}
             </Checkbox>
           ))}
         </div>
@@ -263,6 +307,22 @@ export function ReviewRail() {
   const classes = useStore((s) => s.classes);
   if (!sheet) return null;
   const cls = classes.find((c) => c.id === pickClassId(classes, sheet.course)) ?? classes[0];
+  if (sheet.source === 'topics') {
+    return (
+      <>
+        <SectionLabel index="01" title="Topics" meta={String(sheet.problems.length)} />
+        <div className="rail-list">
+          {sheet.problems.map((p) => (
+            <RailRow key={p.n} dot={p.supported ? 'var(--accent-default)' : 'var(--line-strong)'} label={conceptName(p.concept)} meta={p.supported ? undefined : 'not yet'} muted={!p.supported} />
+          ))}
+        </div>
+        <div className="rail-save">
+          <span className="t-label-s c-secondary">Save to</span>
+          <ClassTag hue={cls.hue}>{cls.name}</ClassTag>
+        </div>
+      </>
+    );
+  }
   return (
     <>
       <SectionLabel index="01" title="Sheet" />
@@ -300,5 +360,6 @@ export function ReviewRail() {
 
 export function ReviewStatus() {
   const sheet = useStore((s) => s.sheet);
+  if (sheet?.source === 'topics') return <>{plural(sheet.problems.length, 'topic')} picked</>;
   return <>{sheet ? `${sheet.fileName} · ${sheet.pages} pages` : ''}</>;
 }

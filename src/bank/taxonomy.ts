@@ -208,6 +208,171 @@ export const COURSES: Course[] = [
       ['polar', 'Polar form, powers and roots', 'c', 1, 'polar form|de moivre|argument|roots of unity'],
     ]],
   ]),
+
+  // ——— Wave 2 ———
+  course('phys2', 'Physics II: Electricity and Magnetism', 'Ph 213', 'physics', [
+    ['waves', 'Waves and sound', 'Waves', [
+      ['speed', 'Wave speed, frequency and wavelength', 'c', 1, 'wavelength|frequency|wave speed|hz'],
+      ['strings', 'Strings and standing waves', 'c', 1, 'standing wave|harmonic|fundamental|node|antinode'],
+      ['intensity', 'Sound intensity and decibels', 'm', 1, 'decibel|db|intensity|loudness'],
+      ['doppler', 'Doppler effect', 'm', 1, 'doppler|siren|approaching|receding'],
+    ]],
+    ['field', 'Electric charge and field', 'Electric field', [
+      ['coulomb', 'Coulomb’s law and superposition', 'c', 1, 'coulomb|point charge|charges|μc|nc|electrostatic force'],
+      ['pointField', 'Electric field of point charges', 'c', 1, 'electric field|n/c|field at'],
+      ['gauss', 'Gauss’s law', 'c', 1, 'gauss|flux|gaussian surface|charged sphere|line of charge|sheet of charge'],
+      ['uniformField', 'Charges in a uniform field', 'm', 1, 'uniform field|between the plates|deflect|electron beam'],
+    ]],
+    ['potential', 'Electric potential', 'Potential', [
+      ['pointPotential', 'Potential and potential energy of point charges', 'c', 1, 'electric potential|potential energy|volts'],
+      ['uniformPotential', 'Potential difference and electron-volts', 'c', 1, 'potential difference|electron-volt|ev|accelerated through'],
+    ]],
+    ['capacitance', 'Capacitance', 'Capacitance', [
+      ['plates', 'Parallel-plate capacitors', 'c', 1, 'capacitor|capacitance|parallel-plate|farad|pf|μf'],
+      ['combos', 'Capacitors in series and parallel', 'c', 1, 'capacitors in series|capacitors in parallel|equivalent capacitance'],
+      ['energy', 'Stored energy and dielectrics', 'm', 1, 'stored energy|dielectric'],
+    ]],
+    ['circuits', 'Current and DC circuits', 'Circuits', [
+      ['resistivity', 'Resistivity and resistance', 'm', 1, 'resistivity|resistance of a wire|ω·m'],
+      ['ohm', 'Ohm’s law and electrical power', 'c', 1, 'ohm|current|voltage|power dissipated|resistor'],
+      ['combos', 'Series and parallel resistors', 'c', 1, 'series|parallel|equivalent resistance'],
+      ['kirchhoff', 'Kirchhoff’s rules', 'c', 1, 'kirchhoff|loop rule|junction rule|two batteries'],
+      ['rc', 'RC circuits', 'c', 1, 'rc circuit|time constant|charging|discharging'],
+    ]],
+    ['magnetism', 'Magnetism', 'Magnetism', [
+      ['movingCharge', 'Force on a moving charge', 'c', 1, 'magnetic force|lorentz|cyclotron|radius of the path|tesla'],
+      ['wireForce', 'Force on wires and torque on loops', 'c', 1, 'current-carrying wire|force on a wire|torque on a loop|magnetic moment'],
+      ['fields', 'Magnetic fields of wires and solenoids', 'c', 1, 'biot|ampère|ampere|solenoid|long straight wire|magnetic field of'],
+    ]],
+    ['induction', 'Electromagnetic induction', 'Induction', [
+      ['faraday', 'Faraday’s and Lenz’s laws', 'c', 1, 'faraday|induced emf|lenz|changing magnetic field'],
+      ['motional', 'Motional EMF', 'm', 1, 'motional emf|rails|sliding bar|rod moving'],
+      ['inductance', 'Inductance and LR circuits', 'c', 1, 'inductor|inductance|henry|lr circuit'],
+    ]],
+    ['ac', 'AC circuits and electromagnetic waves', 'AC & EM waves', [
+      ['ac', 'Reactance, impedance and resonance', 'c', 1, 'reactance|impedance|resonance|rms|alternating current'],
+      ['lc', 'LC oscillation', 'm', 1, 'lc circuit|oscillation frequency'],
+      ['emWaves', 'Electromagnetic waves', 'c', 1, 'electromagnetic wave|speed of light|radio|photon flux'],
+    ]],
+  ]),
+
+  course('stats', 'Probability and Statistics', 'Ma 224.1', 'maths', [
+    ['describe', 'Describing data', 'Describing data', [
+      ['center', 'Mean, median and standard deviation', 'c', 0, 'mean|median|standard deviation|variance|data set'],
+      ['zscores', 'z-scores and percentiles', 'c', 0, 'z-score|z score|percentile|standardized'],
+    ]],
+    ['prob', 'Probability', 'Probability', [
+      ['rules', 'Probability rules and conditional probability', 'c', 1, 'probability|conditional|independent|mutually exclusive'],
+      ['bayes', 'Bayes’ theorem', 'c', 1, 'bayes|false positive|test accuracy|given that'],
+      ['counting', 'Counting: permutations and combinations', 'c', 1, 'permutation|combination|arrangements|how many ways'],
+    ]],
+    ['rv', 'Random variables', 'Random variables', [
+      ['expectation', 'Expected value and variance', 'c', 1, 'expected value|expectation|random variable'],
+      ['binomial', 'Binomial distribution', 'c', 1, 'binomial|successes|trials'],
+      ['poisson', 'Poisson and geometric distributions', 'c', 1, 'poisson|geometric|rate per|arrivals|first success'],
+      ['continuous', 'Uniform and exponential distributions', 'c', 1, 'uniform distribution|exponential distribution|waiting time|density'],
+      ['normal', 'Normal probabilities', 'c', 1, 'normal distribution|bell curve|normally distributed'],
+      ['mgf', 'Moment-generating functions', 'm', 1, 'moment-generating|moment generating|mgf'],
+    ]],
+    ['inference', 'Inference', 'Inference', [
+      ['clt', 'Sampling distributions and the CLT', 'c', 1, 'central limit|sampling distribution|standard error|sample mean'],
+      ['ci', 'Confidence intervals', 'c', 1, 'confidence interval|margin of error'],
+      ['tests', 'Hypothesis tests: z and t', 'c', 1, 'hypothesis test|p-value|null hypothesis|t-test|z-test|significance'],
+      ['chisq', 'Chi-square tests', 'c', 1, 'chi-square|chi square|goodness of fit|contingency'],
+      ['anova', 'One-way ANOVA', 'm', 1, 'anova|analysis of variance|f-statistic'],
+    ]],
+    ['regression', 'Relationships between variables', 'Regression', [
+      ['regression', 'Linear regression and correlation', 'c', 0, 'regression|correlation|least squares|line of best fit'],
+    ]],
+  ]),
+
+  course('diffeq', 'Differential Equations', 'Ma 240', 'maths', [
+    ['first', 'First-order equations', 'First order', [
+      ['linear', 'Separable and linear first-order equations', 'c', 1, 'separable|integrating factor|first-order'],
+      ['models', 'Cooling, mixing and growth models', 'c', 1, 'cooling|mixing|tank|brine|growth rate'],
+    ]],
+    ['second', 'Second-order equations', 'Second order', [
+      ['constCoef', 'Constant-coefficient linear equations', 'c', 1, 'characteristic equation|second-order|homogeneous'],
+      ['oscillators', 'Damped and forced oscillators', 'c', 1, 'damped|forced|resonance|underdamped'],
+    ]],
+    ['systems', 'Systems', 'Systems', [
+      ['eigen', 'Eigenvalues and eigenvectors', 'c', 1, 'eigenvalue|eigenvector|characteristic polynomial'],
+      ['linearSystems', 'Linear systems of ODEs', 'c', 1, 'system of differential equations|x′ = ax'],
+      ['phasePlane', 'Phase-plane equilibria', 'm', 1, 'phase plane|equilibrium|saddle|spiral|stability'],
+    ]],
+    ['transforms', 'Transforms and series', 'Transforms', [
+      ['laplace', 'Laplace transforms', 'c', 1, 'laplace'],
+      ['fourier', 'Fourier series coefficients', 'c', 1, 'fourier series|fourier coefficient'],
+    ]],
+  ]),
+
+  course('vcalc', 'Vector Calculus', 'Ma 223', 'maths', [
+    ['multiple', 'Multiple integrals', 'Multiple integrals', [
+      ['double', 'Double integrals', 'c', 1, 'double integral|iterated integral|∬'],
+      ['polar', 'Double integrals in polar coordinates', 'c', 1, 'polar coordinates|r dr dθ'],
+      ['triple', 'Triple integrals: cylindrical and spherical', 'c', 1, 'triple integral|cylindrical|spherical|∭'],
+      ['mass', 'Mass, center of mass and moments of inertia', 'c', 1, 'lamina|center of mass|moment of inertia|density function'],
+    ]],
+    ['fields', 'Vector fields', 'Vector fields', [
+      ['divCurl', 'Divergence and curl', 'c', 1, 'divergence|curl|∇·|∇×'],
+      ['line', 'Line integrals', 'c', 1, 'line integral|work along|circulation'],
+      ['conservative', 'Conservative fields and potentials', 'c', 1, 'conservative|potential function|path independent'],
+      ['green', 'Green’s theorem', 'c', 1, 'green’s theorem|green\'s theorem|closed curve'],
+      ['flux', 'Flux, Stokes’ and divergence theorems', 'm', 0, 'flux|stokes|divergence theorem|surface integral'],
+    ]],
+  ]),
+
+  // ——— Wave 3 ———
+  course('phys3', 'Physics III: Optics and Modern Physics', 'Ph 214', 'physics', [
+    ['optics', 'Geometric optics', 'Optics', [
+      ['snell', 'Snell’s law and the critical angle', 'c', 1, 'snell|refraction|index of refraction|critical angle|total internal reflection'],
+      ['lenses', 'Thin lenses and mirrors', 'c', 1, 'lens|mirror|focal length|image distance|magnification'],
+    ]],
+    ['wave', 'Physical optics', 'Physical optics', [
+      ['interference', 'Interference and diffraction', 'c', 1, 'double slit|interference|fringe|grating|diffraction|thin film'],
+      ['polarization', 'Polarization', 'm', 1, 'polariz|malus|polarizer'],
+    ]],
+    ['quantum', 'Quantum physics', 'Quantum', [
+      ['photoelectric', 'Photons and the photoelectric effect', 'c', 1, 'photoelectric|work function|photon energy|stopping potential'],
+      ['compton', 'Compton scattering', 'm', 1, 'compton|scattered photon|wavelength shift'],
+      ['deBroglie', 'de Broglie wavelength', 'c', 1, 'de broglie|matter wave'],
+      ['bohr', 'Bohr model and spectra', 'c', 1, 'bohr|hydrogen|energy level|spectral line'],
+    ]],
+    ['modern', 'Relativity and nuclei', 'Modern physics', [
+      ['relativity', 'Special relativity', 'm', 0, 'relativity|time dilation|length contraction|lorentz factor'],
+      ['decay', 'Radioactive decay', 'm', 0, 'half-life|radioactive|decay constant|activity'],
+    ]],
+  ]),
+
+  course('statics', 'Statics and Strength of Materials', 'ME 103 · ESC 201', 'physics', [
+    ['equilibrium', 'Equilibrium', 'Equilibrium', [
+      ['particles', 'Particle equilibrium and cables', 'c', 1, 'equilibrium|cable|hanging from two'],
+      ['moments', 'Moments and couples', 'c', 1, 'moment|couple|about point'],
+      ['beams', 'Beam reactions', 'c', 1, 'reaction|simply supported|distributed load|kn/m|cantilever'],
+      ['trusses', 'Trusses: the method of joints', 'c', 1, 'truss|method of joints|member force'],
+    ]],
+    ['sections', 'Section properties', 'Sections', [
+      ['centroids', 'Centroids and area moments of inertia', 'c', 1, 'centroid|second moment of area|area moment'],
+    ]],
+    ['strength', 'Strength of materials', 'Strength', [
+      ['axial', 'Axial stress and strain', 'c', 1, 'stress|strain|elongation|young’s modulus|axial'],
+      ['shearMoment', 'Shear force and bending moment', 'c', 1, 'shear force|bending moment|moment diagram'],
+      ['bending', 'Bending stress', 'c', 1, 'bending stress|flexure|section modulus'],
+    ]],
+  ]),
+
+  course('precalc', 'Precalculus and College Algebra', 'Gateway', 'maths', [
+    ['functions', 'Functions and equations', 'Functions', [
+      ['expLog', 'Exponential and logarithmic equations', 'c', 0, 'logarithm|log|exponential equation|compound interest'],
+      ['systems', 'Systems of equations', 'c', 0, 'system of equations|two equations'],
+      ['sequences', 'Arithmetic and geometric sequences', 'c', 0, 'arithmetic sequence|geometric sequence|nth term|common ratio'],
+    ]],
+    ['trig', 'Trigonometry', 'Trigonometry', [
+      ['rightTri', 'Right-triangle trigonometry', 'c', 0, 'right triangle|opposite|adjacent|hypotenuse|angle of elevation'],
+      ['lawSines', 'Law of sines and cosines', 'c', 0, 'law of sines|law of cosines|oblique triangle'],
+      ['trigEq', 'Trig equations', 'c', 0, 'trig equation|solve sin|solve cos'],
+    ]],
+  ]),
 ];
 
 export const CONCEPTS = new Map<string, Concept>(COURSES.flatMap((c) => c.units.flatMap((u) => u.concepts.map((k) => [k.id, k] as const))));

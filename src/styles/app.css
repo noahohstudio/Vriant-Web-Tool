@@ -898,3 +898,24 @@ button.choice:active { transform: scale(0.995); }
 .sheet-row--open:hover .sheet-row__end .tag, .sheet-row__hit:focus-visible ~ .sheet-row__end .tag { opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
 .sheet-row--open:hover .sheet-row__go, .sheet-row__hit:focus-visible ~ .sheet-row__end .sheet-row__go { opacity: 1; transform: none; transition: opacity var(--dur-base) var(--ease-out) 60ms, transform var(--dur-base) var(--ease-out) 60ms; }
 .keep--filed { flex-direction: row; align-items: center; gap: 8px; }
+
+/* ——— Topics: pick concepts without a sheet ——— */
+.topics__search { width: min(480px, 100%); height: 44px; }
+.topic-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.topic-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line-divider); }
+.topic-row__main { display: flex; align-items: center; gap: 12px; min-height: 32px; }
+.topic-row__name, .topic-row .check { font: 500 14px/20px var(--font-sans); }
+.topic-row.is-off .topic-row__name { color: var(--text-tertiary); }
+.topic-row__meta { white-space: nowrap; }
+.topic-unit { padding: 18px 12px 6px; color: var(--text-tertiary); font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+/* "Not in Vriant yet": dashed like the New class tile — a gap, stated plainly, with a way forward. */
+.notyet { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px 20px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius-lg); animation: rise 0.24s var(--ease-out) backwards; }
+.notyet__title { display: flex; align-items: center; gap: 8px; font: 600 15px/20px var(--font-sans); }
+.notyet__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.course-card { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 132px; padding: 20px; border: 0; border-radius: var(--radius-lg); background: var(--bg-surface); color: var(--text-primary); text-align: left; cursor: pointer; transition: transform var(--dur-base) var(--ease-out); }
+.course-card:hover { transform: translateY(-2px); }
+.course-card__meta { margin-top: auto; color: var(--text-tertiary); }
+.course-card.is-off { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-divider); }
+.course-card.is-off .t-heading-s { color: var(--text-secondary); }
+.rail-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 4px 0 20px; }

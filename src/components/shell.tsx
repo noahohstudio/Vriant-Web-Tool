@@ -28,7 +28,7 @@ export function Header() {
   const route = useStore((s) => s.route);
   const hasTest = useStore((s) => !!s.test);
   const hasResults = useStore((s) => !!s.results);
-  const section = route === 'intake' || route === 'review' ? 'intake' : route === 'archive' ? 'archive' : 'practice';
+  const section = route === 'intake' || route === 'topics' || route === 'review' ? 'intake' : route === 'archive' ? 'archive' : 'practice';
   return (
     <header className="header">
       <div className="header__brand">

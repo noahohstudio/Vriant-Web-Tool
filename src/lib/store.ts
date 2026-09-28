@@ -4,9 +4,11 @@ import { useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { ensureFor, getTemplate, hasTemplate } from './bank';
 import { buildFrom, buildQuestions, grade, POINTS, promptText, sampleSheet, type Difficulty, type Grade, type Question, type Result, type Sheet, type Slot } from './problems';
+import { CONCEPTS } from '../bank/taxonomy';
+import { isReady } from './topics';
 
-export type Route = 'intake' | 'review' | 'practice' | 'handin' | 'results' | 'archive';
-const ROUTES: Route[] = ['intake', 'review', 'practice', 'handin', 'results', 'archive'];
+export type Route = 'intake' | 'topics' | 'review' | 'practice' | 'handin' | 'results' | 'archive';
+const ROUTES: Route[] = ['intake', 'topics', 'review', 'practice', 'handin', 'results', 'archive'];
 export type Theme = 'signature' | 'light' | 'dark';
 export type Hue = 'clay' | 'ochre' | 'moss' | 'sky' | 'plum' | 'slate';
 export const HUES: Hue[] = ['sky', 'ochre', 'clay', 'moss', 'plum', 'slate'];
@@ -34,6 +36,8 @@ export type State = {
   attempt: Attempt | null;
   results: Results | null;
   focus: string | null;
+  /** Concepts chosen on the Topics screen, waiting to become a practice test. */
+  picked: string[];
   classes: ClassItem[];
   items: ArchiveItem[];
   activeClass: string;
@@ -111,6 +115,7 @@ function initialState(): State {
     attempt: session?.attempt ?? null,
     results: session?.results ?? null,
     focus: session?.focus ?? null,
+    picked: session?.picked ?? [],
     classes: archive?.classes ?? SEED_CLASSES,
     items: archive?.items ?? SEED_ITEMS,
     activeClass: 'physics-1',
@@ -134,8 +139,8 @@ function set(update: (s: State) => State) {
   persistTimer = window.setTimeout(persist, 250);
 }
 function persist() {
-  const { route, sheet, upload, setup, test, attempt, results, focus, classes, items } = state;
-  write(() => sessionStorage, KEY.session, { route, sheet, upload: upload && { ...upload, url: null }, setup, test, attempt, results, focus });
+  const { route, sheet, upload, setup, test, attempt, results, focus, picked, classes, items } = state;
+  write(() => sessionStorage, KEY.session, { route, sheet, upload: upload && { ...upload, url: null }, setup, test, attempt, results, focus, picked });
   write(() => localStorage, KEY.archive, { classes, items });
 }
 const subscribe = (l: () => void) => {
@@ -250,6 +255,29 @@ export const setPage = (page: number) => set((s) => ({ ...s, page }));
 export const toggleProblem = (n: number) =>
   set((s) => ({ ...s, setup: { ...s.setup, selected: { ...s.setup.selected, [n]: !s.setup.selected[n] } } }));
 export const setSetup = (patch: Partial<Setup>) => set((s) => ({ ...s, setup: { ...s.setup, ...patch } }));
+
+// ——— Topics: practice concepts without a sheet ———
+export const togglePick = (id: string) => set((s) => ({ ...s, picked: s.picked.includes(id) ? s.picked.filter((x) => x !== id) : [...s.picked, id] }));
+export const clearPicks = () => set((s) => ({ ...s, picked: [] }));
+
+/** Turn the picked concepts into a sheet, so Review, Practice, Results and the Archive work exactly as for a scan.
+ *  Concepts that aren't in the bank yet stay on the sheet, marked, so the student sees what's missing. */
+export function practiceTopics(ids = state.picked) {
+  const concepts = ids.map((id) => CONCEPTS.get(id)).filter((c) => !!c);
+  if (!concepts.length) return;
+  const names = concepts.map((c) => c.name);
+  const sheet: Sheet = {
+    id: `topics-${Date.now().toString(36)}`,
+    title: names.length <= 2 ? names.join(' · ') : `${names[0]} + ${names.length - 1} more`,
+    course: concepts[0].course.name,
+    fileName: 'Picked topics',
+    pages: 1,
+    scannedAt: Date.now(),
+    source: 'topics',
+    problems: concepts.map((c, i) => ({ n: i + 1, page: 1, concept: c.id, templateId: null, values: {}, supported: isReady(c), text: c.name, reason: isReady(c) ? undefined : 'not in Vriant yet' })),
+  };
+  go('review', (s) => ({ ...s, sheet, upload: null, page: 1, picked: concepts.map((c) => c.id), setup: { ...DEFAULT_SETUP, selected: selectAll(sheet), timer: s.setup.timer } }));
+}
 
 const newAttempt = (): Attempt => ({ answers: {}, choices: {}, flagged: {}, startedAt: Date.now(), current: 0 });
 const newSeed = () => Math.floor(Math.random() * 2 ** 31);

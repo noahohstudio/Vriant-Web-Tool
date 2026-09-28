@@ -4,11 +4,13 @@ import { ArchiveMain, ArchiveRail, ArchiveStatus } from './screens/archive';
 import { IntakeMain, IntakeRail, IntakeStatus, ReviewMain, ReviewRail, ReviewStatus } from './screens/intake';
 import { HandInMain, HandInStatus, PracticeMain, PracticeRail, PracticeStatus } from './screens/practice';
 import { ResultsMain, ResultsRail, ResultsStatus } from './screens/results';
+import { TopicsMain, TopicsRail, TopicsStatus } from './screens/topics';
 import { useStore, type Route } from './lib/store';
 
 type Screen = { Main: ComponentType; Rail: ComponentType; Status: ComponentType };
 const SCREENS: Record<Route, Screen> = {
   intake: { Main: IntakeMain, Rail: IntakeRail, Status: IntakeStatus },
+  topics: { Main: TopicsMain, Rail: TopicsRail, Status: TopicsStatus },
   review: { Main: ReviewMain, Rail: ReviewRail, Status: ReviewStatus },
   practice: { Main: PracticeMain, Rail: PracticeRail, Status: PracticeStatus },
   handin: { Main: HandInMain, Rail: PracticeRail, Status: HandInStatus },
