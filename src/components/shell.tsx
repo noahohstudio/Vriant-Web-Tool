@@ -15,9 +15,10 @@ function ThemeSwitch() {
   return <Segmented label="Theme" className="seg--theme" options={THEMES} value={theme} onChange={setTheme} />;
 }
 
+/** The current section's tab is inert: clicking where you already are does nothing. */
 function NavItem({ label, active, disabled, onClick }: { label: string; active: boolean; disabled?: boolean; onClick: () => void }) {
   return (
-    <button type="button" className="nav-item" aria-current={active ? 'page' : undefined} disabled={disabled} onClick={onClick}>
+    <button type="button" className="nav-item" aria-current={active ? 'page' : undefined} disabled={disabled} onClick={active ? undefined : onClick}>
       {label}
     </button>
   );

@@ -167,6 +167,8 @@ function transition(kind: 'nav' | 'theme', update: () => void) {
 }
 
 export function go(route: Route, mutate?: (s: State) => State) {
+  // Already there with nothing to change: no transition replay, no history entry.
+  if (!mutate && guard(route, state) === state.route) return;
   transition('nav', () => {
     commit((s) => {
       const n = mutate ? mutate(s) : s;

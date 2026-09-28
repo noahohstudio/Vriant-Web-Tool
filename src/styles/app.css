@@ -119,7 +119,7 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { box-shadow: va
 }
 .nav-item:hover { color: var(--text-primary); }
 .nav-item:hover::after { transform: scaleX(1); background: var(--line-strong); }
-.nav-item[aria-current='page'] { color: var(--text-primary); }
+.nav-item[aria-current='page'] { color: var(--text-primary); cursor: default; }
 .nav-item[aria-current='page']::after { transform: scaleX(1); background: var(--text-primary); }
 .nav-item:disabled { opacity: 0.4; cursor: default; }
 .nav-item:disabled::after { display: none; }
