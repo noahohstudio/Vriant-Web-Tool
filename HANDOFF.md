@@ -1,8 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.3 · working prototype on `main` · last updated 27 Sep 2026 · describes the code at commit `8efa853`
->
-> **Direction changed at 8efa853 (read first):** no AI at runtime. Problems come from a curated bank in `src/bank/` (one lazily loaded file per course; concept map in `src/bank/taxonomy.ts`; research in `docs/curriculum.md`). Physics I is built (108 templates, 48 concepts). §3–§4 below still describe the older 5-template engine in places and need a full rewrite; the decision log (§12) is current.
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `b97ba27`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -12,9 +10,10 @@
 > If code and Figma disagree, fix one of them or list the difference under Known gaps (§11). A stale handoff is worse than none.
 
 **Who holds what:**
-- **This file** holds intent, decisions and how things work.
-- **The code** is the source of truth for behaviour and tokens: `src/styles/tokens.css`.
-- **Figma** holds the visual system and the original screen designs.
+- **This file:** intent, decisions, how things work, and where we're going.
+- **The code:** the source of truth for behavior, tokens (`src/styles/tokens.css`) and the problem bank (`src/bank/`).
+- **`docs/curriculum.md`:** the research behind the bank: which courses and concepts we cover, why, and how common each one is.
+- **Figma:** the visual system and the original screen designs.
 
 ---
 
@@ -22,17 +21,27 @@
 
 Vriant turns this week's homework into next week's practice.
 
-A student scans a physics or maths worksheet. Vriant finds the problems and writes a short practice test made of **variants**: the same problems with new numbers. When the student hands the test back, typed or on paper, Vriant grades it and shows worked solutions. The sheet can then be filed under a class, or simply let go.
+1. A student drops in a worksheet, or simply picks the topics they're studying.
+2. Vriant works out which **concepts** those are.
+3. It builds a short practice test from a curated **bank of problems** on those concepts, at the difficulty they choose.
+4. When they hand the test in, typed, Vriant grades it and shows worked solutions.
+5. The test can be filed under a class, or let go.
 
-**The loop:** Scan → Practice → Grade → File.
+**The loop:** Sheet or topics → Concepts → Practice → Grade → File.
 
-**Who it's for:** secondary and early-university students working through physics and maths problem sets.
+**Who it's for:**
+- First, **Cooper Union students**: the engineering core, and the architecture structures sequence.
+- Then American college physics and maths more broadly, weighted toward the most common courses and concepts.
+
+**How it's built to run:** it **costs nothing to run**.
+- No AI and no server: every problem is a hand-written template in the bank, and every answer is computed from a formula.
+- The site is static and meant for Vercel.
 
 **What it is not.** This is the main thing that sets Vriant apart from Quizlet-style edtech:
-
 - It's a tool you pick up, not a place you live. Nothing is kept unless you archive it.
 - No decks, streaks, points, leaderboards, feeds or mascots. No confetti, and no shaming a low score.
 - No accounts for now. Login is a maybe for later, once the base tool has proven itself.
+- It never pretends to cover a topic it doesn't. Gaps are stated plainly.
 
 ---
 
@@ -40,7 +49,8 @@ A student scans a physics or maths worksheet. Vriant finds the problems and writ
 
 | What | Where |
 |---|---|
-| Repo | [github.com/noahohstudio/Vriant-Web-Tool](https://github.com/noahohstudio/Vriant-Web-Tool). Commit straight to `main`; no branches or PRs (see §6). |
+| Repo | [github.com/noahohstudio/Vriant-Web-Tool](https://github.com/noahohstudio/Vriant-Web-Tool). Commit straight to `main`; no branches or PRs (§6). |
+| Curriculum research | [`docs/curriculum.md`](docs/curriculum.md) |
 | Figma file | [Vriant Design System — Screens](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens) |
 | Design system (14 boards) | [Design System page → “Vriant — Design System”](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=5-2) |
 | Desktop flow (6 screens) | [Screens page → “Vriant — Desktop flow v1”](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1434) |
@@ -49,8 +59,8 @@ A student scans a physics or maths worksheet. Vriant finds the problems and writ
 ```bash
 npm install
 npm run dev                # http://localhost:5173 — add `-- --host` to open it on a phone on the same Wi-Fi
-npm run build              # type-check + production build
-npm run check:generator    # stress-test the problem engine (see §4.6)
+npm run build              # type-check + production build (run before every push)
+npm run check:generator    # stress-test every template in the bank (§4.7)
 ```
 
 To start over, use **Settings (sliders icon) → Reset demo data**. It clears the archive and the session.
@@ -59,178 +69,169 @@ To start over, use **Settings (sliders icon) → Reset demo data**. It clears th
 
 ## 3. Where the prototype stands
 
-A desktop-first, working prototype of the whole loop is built with Vite 8, React 19 and TypeScript 7. It has no UI libraries; KaTeX is loaded lazily.
+A desktop-first prototype of the whole loop, built with Vite 8, React 19 and TypeScript 7. It has no UI libraries; KaTeX loads lazily.
 
-| Real | Simulated (for now) |
+| Real | Simulated or not built yet |
 |---|---|
-| Variant generation from 5 kinematics templates, at 3 difficulty levels | **Scanning and problem detection.** Every upload loads the sample *Kinematics — Worksheet 4* (§4.3) |
-| Answers computed from each template's formula | **Paper hand-in.** It grades the answers typed in the app |
-| Grading: tolerance aware of significant figures, partial credit, feedback on common mistakes | PDF previews |
-| Multiple-choice distractors built from those same mistakes | |
-| KaTeX worked solutions; "Try a similar one"; "Practice these again" | |
-| Archive with classes: create, rename, recolour, delete (sheets move to Unsorted, with Undo); move and delete sheets | |
-| **Revisit archived work.** A filed test reopens on Results (answers, grades, feedback, worked solutions); its source sheet reopens in Review to make a new test | |
-| Signature / Light / Dark themes, saved per device | |
-| Keyboard: `Enter` next · `H` hint · `F` flag · `S` skip · `1–4` choose | |
+| **Problem bank:** Physics I (Ph 112): 108 original templates across all 48 concepts (39 warm-up · 45 standard · 24 challenge) | **Reading uploaded sheets.** Every upload still loads the sample *Kinematics — Worksheet 4*. Real detection is Phase B (§10) |
+| **Concept map:** 11 courses and 210 concepts, including those without problems yet | **Every other course's problems**: Calculus I is next (§10, Phase A) |
+| **Topics screen:** search in your own words or browse by course, then pick topics and practice without a sheet | **Photo text recognition (OCR)** |
+| **Honest coverage:** "Not in Vriant yet" with the closest ready topics, wherever a topic has no problems | **Paper hand-in.** It grades the answers typed in the app |
+| Tests draw problems by concept at a difficulty tier; variants get fresh numbers and computed answers | **Worded ("which one?") answers**: only numeric answers exist today |
+| Grading: tolerance, common-mistake feedback, wrong sign, wrong power of ten; reads arithmetic like 27/5.5, π/4, 3×10⁸ | PDF previews |
+| KaTeX worked solutions and inline maths in prompts; "Try a similar one"; "Practice these again" | Mobile layout, camera-first capture, print layout |
+| Archive with classes; filed tests reopen on Results, and their course file loads on demand | |
+| Loading screen (once per session); Signature / Light / Dark themes; keyboard shortcuts | |
 
-**Storage:**
-- **The archive:** stays on this device, in `localStorage` (`vriant:archive:v1`).
+**Storage** (all on the device):
+- **The archive:** in `localStorage` (`vriant:archive:v1`).
   - Each filed test stores a **snapshot** in `item.data`: `sheet`, `test`, `attempt`, `results`. Its source sheet stores `sheet`.
   - Entries without `data` (the demo examples) can't be reopened.
-- **The working session** (sheet, setup, test, answers, results): lasts only for the tab, in `sessionStorage` (`vriant:session:v1`).
-- **Theme:** `vriant:theme`.
+- **The working session:** lasts only for the tab, in `sessionStorage` (`vriant:session:v1`). It holds the sheet, setup, test, answers, results and picked topics.
+- **Other flags:** the theme is `vriant:theme`. The loading screen's seen-this-session flag is `vriant:splash`.
 
 ---
 
-## 4. Scanning & problem generation — how it works, and how to debug it
+## 4. How it works: the bank, the engine, the checks
 
-**This is the next area to debug.** Everything below describes the code as it is now.
-
-### 4.1 Pipeline at a glance
+### 4.1 Pipeline
 
 ```
-Intake ─ file / camera / paste / "try the sample sheet"
-  │  Dropzone.start(file)      1.8 s scan animation, then onFile(file)            src/components/dropzone.tsx
+Intake ─ upload (detection SIMULATED → sample sheet)  or  "Pick topics instead"
+  │                                                        │
+  │                                          Topics ─ search / browse / pick concepts        src/screens/topics.tsx
+  ▼                                                        ▼
+Sheet { problems: [{ n, concept, supported, text, … }] }  ← practiceTopics() builds one from picks   src/lib/store.ts
   ▼
-loadSheet(upload)              SIMULATED: always sampleSheet() → 6 problems       src/lib/store.ts
-  │                            (an image upload is only shown as a picture)
+Review ─ include/exclude, question count, tier (Warm-up · Standard · Challenge), timer
+  │  generate(): slots (one per selected problem's concept)
+  │  → ensureFor(courses)        loads each course's bank file on demand                      src/lib/bank.ts
+  │  → buildQuestions(slots, count, difficulty, seed)                                          src/lib/problems.ts
   ▼
-Review ─ include / exclude problems, questions (1–12, or typed up to 30), difficulty, timer
-  │  generate() → buildQuestions(problems, selected, count, difficulty, seed)     src/lib/problems.ts
+Practice ─ Question: { templateId, values, dps, kind, answer, choices? }
   ▼
-Question[] ─ each has templateId, values, dps (decimals shown), answer, kind, choices / correct
-  │  Practice: answers kept in attempt.answers / attempt.choices
-  ▼
-handIn('typed' | 'paper') → grade(q, typed, chosen) for every question           src/lib/store.ts → problems.ts
-  ▼
-Results ─ score, feedback, workedSteps(q) (KaTeX); trySimilar() → buildFrom([problem]); practiceMissed()
-  │  fileResults(classId)      stores a snapshot (sheet, test, attempt, results) in the archive
-  ▼
-Archive ─ openArchived(id)     filed test → Results (read-only review)  ·  source sheet → Review (new test)
+handIn() → grade() per question → Results (feedback, worked steps) → fileResults() snapshot → Archive
+  ▲                                                                                            │
+  └──────────────── openArchived(): loads the course file, then reopens Results or Review ─────┘
 ```
 
 ### 4.2 Code map
 
 | File | What lives there |
 |---|---|
-| `src/lib/problems.ts` | **The engine.** `TEMPLATES` (parameters, prompt, `answer`, `steps`, `mistakes`, `hint`), `sampleSheet()`, `makeValues()` (picks values), `buildQuestions()` / `buildFrom()`, `makeChoices()`, `grade()`, `tolerance()`, `parseNumber()`, `workedSteps()`, `fmtSig()` |
-| `src/lib/store.ts` | Flow and state: `loadSheet()` (**the simulated scan**), `generate()`, `nextQuestion()`, `handIn()`, `trySimilar()`, `practiceMissed()`, `fileResults()` (snapshots), `openArchived()`, archive actions, persistence, navigation |
-| `src/components/dropzone.tsx` | Intake UI: drag and drop, file picker, camera input, paste; the scan animation (`SCAN_MS = 1800`, caption phases) |
-| `src/screens/intake.tsx` | Review screen: the rendered sample page with Detected Regions and the test-setup controls |
-| `src/components/question.tsx` | Prompt rendering (changed values in ink), answer input, choices, graded answer, worked solution |
-| `scripts/check-generator.mjs` | Stress test for the engine (§4.6) |
+| `src/bank/taxonomy.ts` | **The concept map.** Courses → units → concepts, with stable ids, level (core, common, occasional), a Cooper flag and detection keywords. Ships with the app. |
+| `src/bank/<course>.ts` | **One course's templates**, e.g. `physics-1.ts`, loaded lazily. Each file default-exports `Template[]`. |
+| `src/bank/kit.ts` | Authoring helpers: `tpl()`, compact params, prompt parsing, `G`, `rad`, `deg`, `n()` for intermediate TeX values |
+| `src/lib/bank.ts` | Registry: `LOADERS` (one line per course file), `ensureFor()`, `getTemplate()`, `templatesFor()`, legacy id aliases |
+| `src/lib/problems.ts` | Engine: formatting, `promptParts()`, value generation, `buildQuestions()`, `buildFrom()`, `makeChoices()`, `grade()`, `parseNumber()`, `workedSteps()`, `sampleSheet()` |
+| `src/lib/topics.ts` | Coverage and search: `isReady()`, `searchConcepts()`, `suggestionsFor()`, `suggestionsForQuery()` |
+| `src/lib/store.ts` | Flow and state: `loadSheet()` (**simulated scan**), `practiceTopics()`, `generate()`, `handIn()`, `fileResults()`, `openArchived()`, `ready()` (startup) |
+| `src/screens/topics.tsx` | Topics screen, course cards, concept rows, the shared `NotYet` panel |
+| `scripts/check-generator.mjs` | The bank's stress test (§4.7) |
 
-### 4.3 Scanning today (simulated)
+### 4.3 The concept map and coverage
 
-- **Any file** (image, PDF or pasted image) plays the scan animation for 1.8 s. Then `loadSheet()` creates `sampleSheet(fileName, 'upload')` with the six built-in problems.
-- The Review screen shows an uploaded image as-is, with a visible notice ("Prototype: problem detection is simulated…"). PDFs get a file card only.
-- "Try the sample sheet" loads the same six problems, rendered as an HTML page with clickable Detected Regions.
-- Problem 4 ("Sketch the v–t graph…") is hard-coded as unsupported, to show the Excluded state.
-- There are **no failure states**: no blurry scan, no "nothing found", no wrong file type, no timeout.
-- The paper hand-in runs the same animation, then calls `handIn('paper')`, which grades the **typed** answers.
+- **Ids:** a concept id is `course.unit.concept`, e.g. `phys1.kin1d.freeFall`. A template id is `course.name`, e.g. `phys1.carAccel`. The prefix tells the registry which file to load.
+- **Ready means the course file exists.** A concept is *ready* when its course is registered in `LOADERS`. `check:generator` fails if any concept in a registered course has no templates, so "ready" never lies.
+- **Not-ready concepts are still known.** They appear in search and browse marked **Not yet**, and a sheet or pick that includes one keeps it, marked.
+- **The `NotYet` panel** names the concept and the course it's planned for, then offers the closest ready concepts: same unit, then same course, then shared keywords, then same subject.
+- **Order:** see §10 and `docs/curriculum.md`. Cooper's core first, then national popularity.
 
-**Making it real (proposed):**
-1. **Keep secrets off the client.** Put a small server endpoint (or serverless function) in front of the vision model, so API keys never reach the browser. The static prototype can't do this by itself.
-2. **Define the extraction contract first**, as JSON. One object per problem:
-   - `n`
-   - `text`
-   - `quantities[]`: `{ symbol, value, unit, sigFigs, span }`
-   - `asks`: the quantity wanted, with its unit
-   - `bbox`: normalised 0–1, which drives the Detected Region overlay
-   - `figure` crop, if any
-   - `supported`, plus a `reason` when it isn't
-   - `confidence`
+### 4.4 Writing templates (content rules)
 
-   Show low-confidence problems as **Detected**, not Selected.
-3. **Map extracted problems to templates.** Either match against the known `TEMPLATES`, or have the model propose a parametric template: parameter ranges plus a formula. **Always compute answers deterministically** with a safe expression evaluator (e.g. mathjs), never with the model.
-4. **Validate before use.** A proposed template must reproduce the original problem's numbers, and its answer when one is printed. Reject it if not.
-5. **Add the failure states** listed above (§5, Intake).
+**Every problem is original.**
+- Syllabi and textbooks decide *what* to cover and *how hard*, never the wording.
+- OpenStax material is CC BY-NC-SA; we only used its tables of contents.
 
-### 4.4 Problem generation
+Answers are computed from a formula, never written by hand. Every template carries at least one hand-checked `ref` case.
 
-**Templates.** There are 5, all Kinematics. Values on the sample sheet and their expected answers (the check script prints these):
+```ts
+tpl({
+  id: 'phys1.carAccel', concept: 'phys1.kin1d.constAccel', tier: 1, title: 'Car from rest',
+  params: { v: [12, 36, 1, 'm/s'], t: [3, 9, 0.5, 's'] },        // [min, max, step, unit, { dp, int, fixed, nz }]
+  prompt: 'A car speeds up from 0 to {v} in {t}. Find its acceleration.',   // {k} = value + unit; $…$ = TeX with \p{k}
+  answer: (v) => v.v / v.t, unit: 'm/s²',                       // `exact: true` for maths: whole numbers stay whole
+  steps: (f, ans, v) => [{ tex: 'a = \\dfrac{\\Delta v}{\\Delta t}', note: '…' }, …],
+  mistakes: (v) => [{ value: v.v * v.t, why: 'You multiplied…' }, …],   // feed distractors and feedback
+  valid: (v) => …,                                              // optional constraint on values
+  hint: 'Acceleration = change in velocity ÷ time taken.',
+  ref: [{ v: { v: 24, t: 6 }, a: 4 }],                          // hand-checked; the check fails if the formula disagrees
+});
+```
 
-| Q | Template | Original values | Answer |
-|---|---|---|---|
-| 1 | `carAccel` | v 24 m/s, t 6.0 s | 4.00 m/s² |
-| 2 | `droppedBall` | h 20 m | 2.02 s |
-| 3 | `cyclist` | v 9.0 m/s, t 4.0 s | 18.0 m |
-| 5 | `braking` | v 18 m/s, a 6.0 m/s² | 27.0 m |
-| 6 | `twoTrains` | d 30 km, 80 & 100 km/h | 10.0 min |
+- **Tiers:**
+  - 1 · Warm-up: one idea, direct formula
+  - 2 · Standard: typical homework, a step or two
+  - 3 · Challenge: several steps, or calculus
+- **How many:** about 3 templates per core concept over time, at least 1 per concept before a course is registered.
+- **House style:**
+  - American spelling and conventions; SI units; g = 9.81 m/s².
+  - Plain, kind wording. Mistake feedback explains the physics, not the failure.
+  - Keep numbers tidy: parameters positive, with signs written into the prompt.
+  - Never a coefficient of 1 in maths prompts ("1t³"): start integer ranges at 2.
+- **Adding a course:**
+  1. Create `src/bank/<course>.ts`.
+  2. Add a `LOADERS` line in `src/lib/bank.ts`.
+  3. Run `npm run check:generator`.
+  4. The course becomes "ready" in the app automatically.
 
-**How variants are made** (`makeValues`):
-- Each parameter has a range, a step and the decimals to display.
-- **Difficulty** changes only the range and the step:
-  - *Easier:* coarser steps, so rounder numbers.
-  - *Same:* the template's own ranges.
-  - *Harder:* a wider range (×0.6 to ×1.5) and half the step.
-- Values are redrawn (up to 32 tries) until every parameter differs from the original and the template's optional `valid()` passes.
-- Only `twoTrains` has a `valid()`: the two speeds must differ.
+### 4.5 Generation
 
-**Test assembly** (`buildQuestions`):
-- **Template order:** questions cycle through the selected problems in sheet order (`pool[i % pool.length]`).
-- **Question type:** every third question (`i % 3 === 1`) is multiple choice; the rest are typed.
-- **Seed:** a random seed drives everything, and it's embedded in every question id as `q<seed in base 36>-<index>`, so any test can be rebuilt exactly (§4.6).
-- "Try a similar one" and "Practice these again" use `buildFrom()`, which always produces typed questions.
+- **Slots:** each selected problem contributes its concept. Rounds visit every slot once, in a fresh shuffled order.
+- **Template choice:** the tier matching the difficulty is weighted 4. The next tier gets 1.5 and the far tier 0.5. The same template never appears twice in a row for a concept.
+- **Values** (`makeValues`):
+  - Each parameter is drawn from its range and step.
+  - *Warm-up* uses coarser steps. *Challenge* widens ranges (×0.6–×1.5) and halves the step.
+  - Draws are redone (up to 60 times) until they pass `valid()`, avoid zero where flagged, differ from the sheet's own numbers, and **no common mistake lands within 5% of the answer**. The last rule keeps every variant gradable.
+- **Display:**
+  - Physics answers show 3 significant figures; maths answers (`exact`) keep whole numbers whole.
+  - Very large or small values switch to scientific notation (1.67 × 10⁻⁷).
+- **Multiple choice:**
+  - About one question in three, at random positions.
+  - The options are the answer, the template's mistakes, then scalings, kept at least 4% apart.
+- **Seeds:** the seed is embedded in every question id (`q<seed36>-<i>`), so any test can be rebuilt exactly.
 
-**Answers and choices:**
-- Answers display to 3 significant figures (`fmtSig`), whatever the precision of the inputs.
-- Multiple choice uses the correct answer plus the template's `mistakes()` values, filled up with ×2, ÷2, ×1.5, ×0.75 or ×3. Any two options must be at least 4% apart, and the order is shuffled.
-
-### 4.5 Grading (`grade`)
+### 4.6 Grading (`grade`)
 
 - **Correct:** within `max(1% of the answer, half a unit in the 3rd significant figure)`.
-- **Common mistake:** a value within 2% of a template `mistakes()` value gets that mistake's feedback. The result is incorrect, or partial for mistakes flagged `partial`, such as hours instead of minutes.
-- **Wrong power of ten** (×10ⁿ for n = −3…3): partial, "check your units".
-- **Within 3%:** partial, "carry more digits".
-- **Blank:** skipped, which is not the same as wrong. **Unreadable:** incorrect, with a hint to type just the value.
-- **Points:** 4 correct, 2 partial, 0 otherwise. The score is points ÷ 4, shown out of the question count.
-- **Parsing** reads the first number in the text: commas and spaces are stripped, and `×10^` becomes `e`. "4.91 m/s²" and "4.91e0" both work.
+- **Otherwise, checked in this order:**
+  1. **Common mistake** (within 2%): that mistake's feedback, marked incorrect or partial.
+  2. **Wrong sign:** incorrect, "Right size, wrong sign."
+  3. **Wrong power of ten:** partial.
+  4. **Within 3%:** partial, "carry more digits".
+- **Reading answers:** simple arithmetic (`27/5.5`, `π/4`, `2√3`, `3×10^8`), superscripts (`10⁻⁷`) and a decimal comma (`4,91`) all work. Anything after the value, like a unit, is ignored. Nothing is passed to `eval`.
+- **Blank:** skipped, not wrong.
+- **Points:** 4 correct, 2 partial. The score is points ÷ 4, out of the question count.
 
-### 4.6 Debugging recipes
+### 4.7 Checks & debugging
 
-**Re-run the engine stress test.** It checks thousands of variants at every difficulty:
+`npm run check:generator` loads every course file through Vite and fails (exit 1) on:
+- a formula that misses its `ref`
+- a non-finite answer
+- a correct answer typed as displayed but marked wrong
+- multiple choice without 4 distinct options
+- unfilled or broken TeX
+- a concept with no templates
 
-```bash
-npm run check:generator              # SEEDS=1000 npm run check:generator for a bigger run
-```
+It also reports ambiguous variants. Use `SEEDS=400` for a longer run, or `COURSE=phys1` for one course.
 
-- **Exits 1** on a hard failure: a correct answer rejected, fewer than 4 choices, or a variant identical to the original.
-- **The `ambiguous` column:** variants where a common mistake lands within 5% of the right answer.
+**Console debugging** (`npm run dev`):
+- Import modules by the URL the app actually uses. After a hot reload that URL carries a `?t=` query; otherwise you get a second, separate copy.
+  ```js
+  const url = performance.getEntriesByType('resource').map((e) => e.name).filter((u) => u.includes('/src/lib/store.ts')).pop();
+  const store = await import(url);   // store.getState(), store.go(), store.generate() …
+  ```
+- **Screen changes are asynchronous.** They run inside a View Transition, so poll `getState()` rather than reading it immediately.
 
-**Poke at the engine from the browser console.** This works under `npm run dev` only:
+### 4.8 Known issues — engine and content
 
-```js
-const p = await import('/src/lib/problems.ts');
-const sheet = p.sampleSheet();
-const qs = p.buildQuestions(sheet.problems, { 1: true, 2: true, 3: true, 5: true }, 10, 'same', 12345);
-qs.map((q) => [q.templateId, q.values, p.fmtSig(q.answer), q.kind]);
-p.grade(qs[0], '4.9', undefined);  // → { result, points, feedback }
-p.workedSteps(qs[0]);              // → KaTeX strings + notes
-```
-
-**Rebuild the test you're looking at:**
-1. In DevTools → Application → Session Storage, open `vriant:session:v1`.
-2. Read `test.questions[0].id`, e.g. `q1x3k9-0`, and decode the seed: `parseInt('1x3k9', 36)`.
-3. Call `buildQuestions` with the same selection, count, difficulty and seed.
-
-**Useful state:**
-- `vriant:session:v1` holds `sheet`, `setup`, `test`, `attempt` (answers, choices, flags), `results` and the grades.
-- Settings → **Reset demo data** clears everything.
-
-### 4.7 Known issues — scanning & generation (start here)
-
-| # | Issue | Evidence | Where / suggested fix |
-|---|---|---|---|
-| 1 | **Ambiguous variants.** In `droppedBall`, the wrong method *h ÷ g* equals the right answer √(2h/g) at h ≈ 19.6 m. At h = 20 they're 1% apart (2.04 vs 2.02 s), so a wrong method can be marked correct, and the feedback can't tell them apart. A few *harder* `carAccel` variants do the same when v ≈ t. | `check:generator`: about 4–7% of `droppedBall` variants at every difficulty; about 1% of `carAccel` at *harder* | `makeValues`: reject values where any `mistakes()` value is within ~5% of the answer (a generic `valid()` check) |
-| 2 | **Scanning is fake.** Uploads never affect the problems. | By design for now | §4.3 "Making it real" |
-| 3 | **Harder mode shows odd precision**, such as "10.50 s" or "a = 10.00 m/s²". | `check:generator` `maxDecimals` = 2 | Keep the display decimals at the template's `dp`, or snap harder values to nicer steps |
-| 4 | **The significant-figures policy is undecided.** Answers are always 3 s.f., even when the inputs have 2. | `fmtSig(answer)` | Decide: match the least precise input (textbook rule), or keep 3 s.f. and say so in the UI |
-| 5 | **A decimal comma** ("4,91") is read as 491 and marked "wrong power of ten". | Parser test | `parseNumber`: treat a single comma followed by 1–2 digits as a decimal point, or follow the user's locale |
-| 6 | **Expressions aren't evaluated.** "27/5.5" is read as 27. | Parser test | Evaluate simple arithmetic safely, or say that only a number is expected |
-| 7 | **The question mix is predictable.** Templates cycle in sheet order, and multiple choice is always Q2, Q5, Q8… | `buildQuestions` | Shuffle with the seed; decide the typed vs multiple-choice ratio in Review |
-| 8 | **Only 5 kinematics templates**, and every topic label is "Kinematics". | `TEMPLATES` | Grows with real scanning (§4.3 step 3) |
-| 9 | **Wrong sign** gets only the generic feedback. | Parser test ("−4.91") | Add a sign check before the generic message |
+| # | Issue | Suggested fix |
+|---|---|---|
+| 1 | **The significant-figures policy is undecided.** Physics answers always show 3 s.f. | Decide: match the least precise input, or keep 3 s.f. and say so in the UI |
+| 2 | **Maths prompts can't yet show derived values**, e.g. "x² − 9" when a = 3 | Add `derive: (v) => ({ s: v.a ** 2 })` to templates, with prompt support (Phase A) |
+| 3 | **Fractions show as decimals** (0.3333) in expected answers and steps | A fraction formatter for `exact` templates |
+| 4 | **No worded ("which one?") answers**, so conceptual questions such as Lenz direction or "does it converge?" are missing | A `choice` kind with text options (Phase A) |
+| 5 | **Scanning is simulated** | Phase B |
 
 ---
 
@@ -242,18 +243,19 @@ Every screen shares one frame:
 - **Main area.**
 - **Footer:** 40px, on the **footer rule**, carrying a mono status line.
 
-Nodes (11px crosses) mark the joints. Review and Results add a **split rule** between two columns, which scroll independently.
+Nodes (11px crosses) mark the joints. Review and Results add a **split rule** between two independently scrolling columns. A **loading screen** appears once per session.
 
-| # | Screen | Job & current behaviour |
+| # | Screen | Job & current behavior |
 |---|---|---|
-| 01 | [Intake](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1445) | Drop, choose, photograph or paste a sheet, or try the sample. The rail shows recent sheets and classes. **Scan animation:** a graphite scanner head passes down the page, the loader is in secondary ink, and captions cycle through broad phases. No counts, no blue glow. |
-| 02 | [Review scan](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1505) | The rendered page with Detected Regions: click to include or exclude. **Setup:** problem checkboxes; **Questions** slider 1–12 (double-click the number, or press Enter on it, to type up to 30); **Difficulty** slider with 3 stops (Easier · Same · Harder) and a hint line; **Time myself** Off / On. "Generate practice test" takes about 0.6 s. |
-| 03 | [Practice](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1565) | One question card at a time. A Variant tag names the source problem; changed values are in ink. The hint expands smoothly. Keyboard shortcuts work, and one press moves one step (250 ms guard). The rail lists every question; the aside shows answered, flagged, difficulty and "Hand in early". |
-| 04 | [Hand in](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1622) | **Typed** (instant) or **paper** (scan the sheet — simulated). Blanks count as skipped. |
-| 05 | [Results](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1678) | Score summary, the to-review list and per-question detail: the student's answer, the expected value, feedback and the worked solution. Buttons for "Try a similar one" and "Practice these again". **Keep it?** Pick a class from a custom dropdown and archive it. Once filed, or when reopened from the archive, this shows "Filed under [class]" with a "View in archive" button. |
-| 06 | [Archive](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1734) | Search, filter (All / Graded / Not graded), class folders and sheet rows. **Class menu** ("…" on each folder, and on rail rows when hovered): Rename (inline), Colour, Delete class…. The folder grid ends with a "New class" tile. **Archived tests reopen:** click a filed test to review its results; click a source sheet to make a new test. Each row's status sits flush right; on hover or keyboard focus it gives way to a hint naming what a click does ("Review results" or "Make a new test"). The Intake rail's Recent list opens items directly. Sheet menu: Review results, New test from this sheet, Move to, Delete… (confirm). Opening an archived item over an unfinished test offers Undo, which returns you to that test. Toasts offer Undo. |
+| 01 | [Intake](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1445) | Drop, choose, photograph or paste a sheet, try the sample, or **Pick topics instead**. The rail shows recent sheets and classes. **Scan animation:** a graphite scanner head, a secondary-ink loader, broad captions. |
+| 01b | Topics *(not in Figma yet)* | "What are you studying?" Search in your own words, or browse course cards and tick concepts. Concepts without problems are marked **Not yet**; **Similar** opens the `NotYet` panel with the closest ready topics. The rail lists picks, "Make a practice test", and coverage per course. |
+| 02 | [Review](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1505) | **From a scan:** the rendered page with Detected Regions; the setup list names each problem's concept. **From topics:** a topic list, where a not-yet topic can be swapped for a suggestion. **Setup:** Questions slider 1–12 (type up to 30), **Difficulty** Warm-up · Standard · Challenge, Time myself. |
+| 03 | [Practice](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1565) | One card at a time, headed by the unit label (e.g. KINEMATICS). **Variant** tag when it's the sheet's own problem with new numbers; **Practice** when it's another problem on the same concept. Maths renders inline. Keyboard shortcuts; smooth hint. |
+| 04 | [Hand in](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1622) | **Typed** (instant) or **paper** (simulated). Blanks count as skipped. |
+| 05 | [Results](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1678) | Score, to-review list, per-question detail: answer, expected value, feedback, worked solution. "Try a similar one" and "Practice these again". **Keep it?** files the test to a class. |
+| 06 | [Archive](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1734) | Search, filter, class folders, sheet rows. The status sits flush right; on hover it gives way to what a click does. Filed tests reopen (their course file loads first); source sheets reopen in Review. |
 
-**States not designed or built yet:** a blurry or unreadable scan, "no problems found", an unsupported file, a slow or failed scan, low-confidence grading, offline, and very long prompts or figures. Mobile and camera-first capture isn't built either.
+**States not built yet:** detection results and failures (no readable text, unsupported file, nothing matched → Topics), low-confidence matches, offline, very long prompts or figures. Mobile and camera-first capture.
 
 ---
 
@@ -261,26 +263,31 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 
 1. **Smooth or nothing.** No dropped frames. Everything that moves animates `transform` or `opacity`.
    - Two deliberate exceptions, both tiny and contained: the segmented thumb's `width`, and the hint's height (`grid-template-rows`, contained to the card).
-   - Entrance animations use `animation-fill-mode: backwards`, so they don't hold layers or stacking contexts after they finish.
-2. **Theme and screen changes use the View Transitions API.** It cross-fades snapshots on the compositor, not per-element colour transitions.
-   - A theme flip costs about 1–5 ms of main-thread work.
+   - Entrance animations use `animation-fill-mode: backwards`, so they don't hold layers after they finish.
+2. **Theme and screen changes use the View Transitions API.**
+   - They cross-fade compositor snapshots, not per-element colours, so a theme flip costs 1–5 ms of main-thread work.
    - The theme switch is excluded from the snapshot, so its thumb visibly glides.
    - Browsers without support switch instantly, and `prefers-reduced-motion` turns motion off.
-   - Going where you already are does nothing: the current section's tab is inert, and `go()` skips a same-screen call with nothing to change, so the transition never replays.
+   - Going where you already are does nothing: the current tab is inert, and `go()` skips a same-screen call with nothing to change.
 3. **No stock browser controls.**
-   - One **Segmented** control with a sliding thumb (theme switch, filters, Off / On).
-   - A custom **Slider** (knob follows the pointer, then glides to the nearest stop).
-   - A custom **Select** (popover with enter and exit animation).
+   - One **Segmented** control with a sliding thumb.
+   - A custom **Slider** and a custom **Select**.
    - No native `<select>`, no default switches, **no visible scroll bars**. Areas still scroll, but only vertically: the rail and split columns clip sideways overflow, so nothing can slide out of bounds.
 4. **Labels never shift layout.** Controls keep fixed labels. Icon-only controls reveal their names as a tooltip after about 0.4 s.
 5. **Menus and popovers animate in and out.** Anything holding an open menu is raised above its neighbours.
-6. **Be honest about simulation.** Anything faked says so on screen, in a highlighted notice.
+6. **Be honest.**
+   - Anything simulated says so on screen.
+   - Anything not covered says **Not in Vriant yet**, with a way forward.
 7. **Undo over "are you sure?".** Deleting still confirms, and deletions also offer Undo.
-8. **Local-first.** No accounts. Heavy libraries load lazily (KaTeX is prefetched during practice).
-9. **Workflow:**
-   - Commit directly to `main`.
-   - Run `npm run build` (and `npm run check:generator` when touching the engine) before pushing.
-   - **Update this file after every push.**
+8. **Zero running cost, local-first.**
+   - No AI, no server, no accounts.
+   - Heavy things load only when needed: each course's problems, KaTeX, and later the PDF reader and OCR.
+   - **Size budget:** first load ≤ ~120 KB of compressed JS (today ~104 KB). Each course file ≤ ~60 KB (Physics I is 27 KB).
+9. **Content is original and checked.** See the content rules in §4.4.
+10. **Workflow:**
+    - Commit directly to `main`.
+    - Run `npm run build` and `npm run check:generator` before pushing.
+    - **Update this file after every push.**
 
 ---
 
@@ -295,12 +302,12 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 **Colour & themes:**
 - **Signature** (default): oat paper `#ECE5D8`, graphite ink `#1C1B19`, ballpoint blue `#3348D4`.
 - **Light:** paper white. **Dark:** graphite paper with oat ink.
-- **Accent never fills a button.** Scanning is monochrome; blue appears on drag-over, selection, focus and current.
+- **Accent never fills a button.** Scanning is monochrome; blue appears on drag-over, selection, focus, current, and changed values in a prompt.
 - **Status colours are always paired with a glyph** (✓ ½ ✕).
 - Contrast is AA for primary, secondary, accent, status and button text in all three themes. `text/tertiary` reaches UI-level contrast only.
 - **Oat was chosen** over Chalk & Ink, Sage & Pine and Legal pad (Figma board 05).
 
-**Type:** Geist for everything read or pressed, Geist Mono for annotations on rules. KaTeX renders the maths; STIX Two Italic is only its Figma stand-in. Sentence case everywhere. 13px is the floor for text a student reads, and prompts are at most 680px wide.
+**Type:** Geist for everything read or pressed, Geist Mono for annotations on rules. KaTeX renders the maths (inline in prompts at 1.08em). STIX Two Italic is only its Figma stand-in. Sentence case everywhere. 13px is the floor for text a student reads, and prompts are at most 680px wide.
 
 | Style | Spec | Use |
 |---|---|---|
@@ -317,20 +324,23 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 - `line/rule` is 10–12% ink.
 - Graph paper appears only inside stages (the dropzone, figure wells).
 - Worked-solution steps sit on a rail of nodes.
+- The loading screen is a construction line with a node at each end.
 
 **Shape & depth:**
 - 4px base spacing.
 - Radii: xs 4 · sm 8 · md 12 · lg 16 · xl 24 · full for pills.
 - Tone steps and hairlines separate surfaces; shadows only for things that float.
 - Focus is a 2px gap plus a 2px accent ring.
+- **Dashed outlines mean "not here yet":** the New class tile, the Not-yet panel, courses without problems.
 
-**Logo (placeholder):** a rounded right triangle, the "incline", plus a lowercase "vriant" wordmark.
+**Logo (placeholder):** a rounded right triangle, the "incline", plus a lowercase "vriant" wordmark. **Tagline:** "Homework in, practice out."
 
 **Voice:**
 - Plain and kind.
 - Buttons are verbs.
 - Feedback explains the physics, not the failure.
 - Blanks are "skipped", never "wrong".
+- Gaps are "not in Vriant yet", never hidden.
 
 ---
 
@@ -352,6 +362,7 @@ Set the theme with `<html data-theme="signature | light | dark">`.
   - `--ease-out`, `--ease-in`, `--ease-in-out`
   - `--dur-fast` 120ms · `--dur-base` 200ms · `--dur-theme` 480ms
 - **Layout:** `--size-header` 64 · `--size-rail` 280 · `--size-footer` 40.
+- **The loading screen** in `index.html` repeats the colours inline, because it paints before any stylesheet loads. Keep them in step with `tokens.css`.
 
 When a token changes, update Figma and `tokens.css` together.
 
@@ -362,55 +373,112 @@ When a token changes, update Figma and `tokens.css` together.
 | Component | Where | Notes |
 |---|---|---|
 | Button, IconButton | `components/ui.tsx` | Pills; one Primary per view; icon buttons carry tooltips |
-| **Segmented** | `components/ui.tsx` | One measured, sliding thumb. Supports icon-only options, which show their name on hover. Used by the theme switch, the Archive filter and Time myself (Off / On) |
-| **Slider** | `components/ui.tsx` | Drag, click on the track, keyboard (arrows, Page Up/Down, Home, End); optional labelled stops. The knob's box is knob-sized and moves by transform (container units), so it never overhangs the track |
-| **Select** | `components/ui.tsx` | Custom dropdown; opens up or down; animates in and out |
-| Menu, MenuItem | `components/ui.tsx` | Popover with exit animation. Class menu: Rename, Colour, Delete; sheet menu: Move, Delete |
-| Checkbox, Tag, ClassTag, Mark, Kbd, TeX | `components/ui.tsx` | TeX loads KaTeX on demand |
-| SheetRow (archive) | `screens/archive.tsx` | Whole row opens the item when it has a snapshot. The status tag sits flush right; on hover or focus it gives way to a hint saying what will happen ("Review results" or "Make a new test"). Both share one slot, so nothing shifts |
-| Dropzone | `components/dropzone.tsx` | Idle, drag-over and scanning states. Props: `scanTitle`, `phases`, `allowSample` |
-| QuestionCard, TestProgress, GradedAnswer, WorkedSolution | `components/question.tsx` | Hint uses the smooth reveal |
-| Header, RailRow, ToastHost, Elapsed | `components/shell.tsx` | The current tab is inert (Intake stays lit on Review; the logo and New sheet lead back). Toasts offer Undo |
-
-**Removed:** the Figma Toggle (replaced by the Off / On Segmented) and the native select (replaced by Select and Slider).
+| **Segmented** | `components/ui.tsx` | One measured, sliding thumb; icon-only options show their name on hover |
+| **Slider** | `components/ui.tsx` | Drag, click, keyboard; optional labelled stops. The knob's box is knob-sized and moves by transform, so it never overhangs the track |
+| **Select**, Menu, MenuItem | `components/ui.tsx` | Popovers that animate in and out |
+| Checkbox, Tag, ClassTag, Mark, Kbd, **TeX** | `components/ui.tsx` | TeX loads KaTeX on demand; only `\htmlClass` is trusted, for highlighting changed values |
+| **Prompt**, QuestionCard, TestProgress, GradedAnswer, WorkedSolution | `components/question.tsx` | Prompts mix text, values (accent when changed) and inline TeX; the card shows the unit label and a Variant or Practice tag |
+| **Topics screen**, CourseGrid, ConceptRow, **NotYet** | `screens/topics.tsx` | NotYet is shared with Review |
+| SheetRow (archive) | `screens/archive.tsx` | The status sits flush right; on hover or focus it gives way to a hint of what a click does |
+| Dropzone | `components/dropzone.tsx` | Idle, drag-over and scanning states |
+| Header, RailRow, ToastHost, Elapsed | `components/shell.tsx` | The current tab is inert; toasts offer Undo |
+| Loading screen | `index.html` + `src/main.tsx` | Inline markup and CSS; shows until the saved session's course file and Geist are ready; at least ~1 s on the first visit of a session |
 
 ---
 
-## 10. Open questions / next steps
+## 10. Roadmap — where we're going
 
-1. **Debug scanning and problem generation** (§4.7): start with ambiguous variants, then the significant-figures policy and the question mix.
-2. **Make scanning real** (§4.3): server endpoint, extraction contract, template mapping, validation.
-3. Design and build the missing states (§5).
-4. Real brand identity; the logo is a placeholder.
-5. Mobile and camera-first capture.
-6. A print layout for practice tests (the paper path depends on it).
-7. Should Light or Dark follow the system theme automatically?
-8. Automated tests. `check:generator` is a start; unit tests for `grade()` and `parseNumber()` would come next.
-9. Accounts and sync, once the base tool has proven itself.
+### Phase A — Fill the bank (next)
+
+| Wave | Course | Status |
+|---|---|---|
+| 1 | Physics I: Mechanics (Ph 112) | **Done** — 108 templates, 48 concepts |
+| 1 | Calculus I (Ma 111) | **Next** — ~60 templates planned across 32 concepts (limits, derivatives incl. hyperbolic, applications, integrals) |
+| 1 | Calculus II (Ma 113) | Planned — techniques, applications (volumes, work, centroids), parametric/polar, partial derivatives, series |
+| 1 | Intro Linear Algebra (Ma 110) | Planned — vectors, lines & planes, matrices & systems, complex numbers |
+| 2 | Physics II: E&M (Ph 213) | Planned — waves & sound, fields, potential, capacitance, circuits, magnetism, induction, AC, EM waves |
+| 2 | Probability & Statistics (Ma 224.1) | Planned — the largest intro course nationally |
+| 2 | Differential Equations (Ma 240) | Planned — first/second order, systems, Laplace, Fourier |
+| 2 | Vector Calculus (Ma 223 / Ma 225) | Planned |
+| 3 | Physics III: Optics & Modern (Ph 214) | Planned |
+| 3 | Statics & Strength of Materials (ME 103, ESC 201; Arch Structures) | Planned — shared by engineers and architects |
+| 3 | Precalculus & College Algebra | Planned — the national gateway courses |
+
+**Beyond the concept map:**
+- Cooper's later maths: Linear Algebra (Ma 326), Discrete Mathematics (Ma 352).
+- Engineering sciences (thermodynamics, fluids, circuits).
+- Algebra-based physics variants.
+
+**Engine work that comes with the content:**
+- Derived values in prompts (§4.8 #2).
+- A fraction formatter (#3).
+- Worded-answer questions (#4).
+- Depth: about 3 templates per core concept.
+
+### Phase B — Read real sheets, for free, in the browser
+
+1. **Typed PDFs:**
+   - Read the text layer with `pdfjs-dist`, loaded only when a PDF is dropped.
+   - Split the text into problems by their numbering.
+   - Score each problem against the concept map's keywords, units and symbols.
+2. **Review:**
+   - Each region is labelled with its concept.
+   - Weak matches start as Detected, not selected.
+   - Unmatched or not-yet concepts show the `NotYet` panel.
+3. **Failure states:** no readable text, unsupported file, or nothing matched, each leading to the Topics screen.
+4. **Photos:** OCR with `tesseract.js`, lazily loaded and cached. It's a few MB the first time.
+5. **`npm run check:detect`:** synthetic sheets plus real Cooper sheets kept in a git-ignored folder. Target: at least 90% of problems on typed sheets matched to the right unit.
+
+### Phase C — Product polish and reach
+
+- **Hosting:** deploy the static build to **Vercel**. The free Hobby plan is non-commercial; a paid plan is only needed if Vriant becomes commercial. Keep the size budgets.
+- **More devices:** a mobile layout and camera-first capture.
+- **Paper:**
+  - A **print layout** for practice tests, needed for the paper path.
+  - **Paper hand-in:** reading handwriting isn't feasible for free. Offer typing the answers from paper instead, or revisit later.
+- **Figma catch-up:** the loading screen, the Topics screen and Not-yet panel, the tier labels, the Practice tag, plus the component gaps in §11.
+- **Accessibility:** a screen-reader pass on Slider, Segmented and the Topics screen.
+- **Testing:** unit tests for `grade()`, `parseNumber()` and topic search, alongside `check:generator`.
+- **Decisions to make:** the significant-figures policy (§4.8 #1), and whether Light or Dark should follow the system theme.
+
+### Phase D — Later, maybe
+
+- **Shareable tests with no server:** a test is fully defined by its seed and template ids, so it fits in a URL.
+- **Spaced review from the archive:** "the concepts you missed last week".
+- **Contributions:** the template format is documented (§4.4), so TAs or students could contribute problems through pull requests, checked by the stress test.
+- **Accounts and sync:** only once the base tool has proven itself.
+
+---
 
 ## 11. Known gaps
 
-**Figma is behind the code.** It still shows:
-- the old Toggle and the native Select field
-- the theme switch showing its active label
-- stepped segments (5 / 10 / 15)
-- the blue scan line with glow and the "Found N problems" count
-
-It's missing:
-- Slider, the sliding Segmented and the custom Select
-- the class menu and the New class tile
-- the new scanning animation
-- the hint reveal
-
-Update the Figma components to match.
+**Figma is behind the code.**
+- It still shows:
+  - the old Toggle and the native Select field
+  - the theme switch showing its active label
+  - stepped segments (5 / 10 / 15)
+  - the blue scan line with glow and the "Found N problems" count
+  - difficulty as Easier · Same · Harder
+- It's missing:
+  - Slider, the sliding Segmented and the custom Select
+  - the class menu and the New class tile
+  - the new scanning animation and the hint reveal
+  - the **loading screen**, the **Topics screen** and **Not-yet panel**
+  - the **Practice** tag and the unit label on question cards
 
 **Other gaps:**
-- **Accessibility:** hidden scroll bars reduce discoverability on long pages. Slider and Segmented have keyboard support, but no screen-reader audit has been done.
-- **Snapshot compatibility:** archived snapshots store raw `Question` objects. If the `Question` or template shape changes, bump the storage key (`vriant:archive:v2`) and migrate, or old tests may fail to reopen.
+- **Coverage:** only Physics I has problems; the other 10 courses show as Not yet.
+- **Scanning is simulated:** uploads still load the sample sheet.
+- **Accessibility:** hidden scroll bars reduce discoverability on long pages, and there's been no screen-reader audit.
+- **Snapshot compatibility:**
+  - Archived tests store raw `Question` objects that point at template ids.
+  - Never rename or delete a template id. Retire templates by keeping them, or add an alias in `src/lib/bank.ts`.
+  - If the `Question` shape changes, bump the storage key (`vriant:archive:v2`) and migrate.
 - **Deleting a source sheet** leaves the tests made from it (each carries its own copy of the sheet).
 - **Nothing is synced:** a filed test lives only in this browser.
-- **Sheet Row hover corners:** Figma rounds the hover fill (`radius/lg`); the code keeps it square against the divider lines. Decide which is right.
-- **The engine issues in §4.7.**
+- **Sheet row hover corners:** Figma rounds the hover fill (`radius/lg`); the code keeps it square against the divider lines. Decide which is right.
+
+---
 
 ## 12. Decision log
 
@@ -435,5 +503,8 @@ Update the Figma components to match.
 | 2026-09-27 | Clicking where you already are does nothing: the current tab is inert, and same-screen navigation no longer replays the screen transition or adds a history entry. |
 | 2026-09-27 | Zero running cost: no AI or server at runtime. A bank of original, formula-checked templates, organized by concept, with one lazily loaded file per course. A sheet's concepts decide what gets practised. |
 | 2026-09-27 | Cooper Union's engineering core sets the build order. Wave 1: Physics I, Calculus I, Calculus II, Intro Linear Algebra. National syllabi and frameworks rank how common each concept is (`docs/curriculum.md`). |
-| 2026-09-27 | Physics I bank built: 108 templates, 48 concepts. Difficulty became absolute tiers (Warm-up · Standard · Challenge). Grading reads arithmetic (27/5.5, π/4, 3×10⁸), decimal commas and superscripts, and flags wrong signs. Fixes §4.7 #1, #3, #5, #6, #7, #9. |
+| 2026-09-27 | Physics I bank built: 108 templates, 48 concepts. Difficulty became absolute tiers (Warm-up · Standard · Challenge). Grading reads arithmetic (27/5.5, π/4, 3×10⁸), decimal commas and superscripts, and flags wrong signs. Fixes §4.7 #1, #3, #5, #6, #7, #9 (numbering of the handoff at that time). |
 | 2026-09-27 | Loading screen: incline mark, tagline and a construction-line loader, shown once per session. |
+| 2026-09-28 | Honest coverage: the concept map lists every planned course (11 courses, 210 concepts). Topics without problems say "Not in Vriant yet" and suggest the closest ready ones. |
+| 2026-09-28 | Students can practice without a sheet: a Topics screen for searching in their own words or browsing by course; picked topics become a practice sheet. |
+| 2026-09-28 | Handoff revamped around the bank, coverage and the phased roadmap (§10). |
