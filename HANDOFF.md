@@ -398,7 +398,6 @@ It's missing:
 - the class menu and the New class tile
 - the new scanning animation
 - the hint reveal
-- the Sheet Row hover hint (its Hover state still shows the status; in code the status gives way to "Review results" / "Make a new test")
 
 Update the Figma components to match.
 
@@ -407,6 +406,7 @@ Update the Figma components to match.
 - **Snapshot compatibility:** archived snapshots store raw `Question` objects. If the `Question` or template shape changes, bump the storage key (`vriant:archive:v2`) and migrate, or old tests may fail to reopen.
 - **Deleting a source sheet** leaves the tests made from it (each carries its own copy of the sheet).
 - **Nothing is synced:** a filed test lives only in this browser.
+- **Sheet Row hover corners:** Figma rounds the hover fill (`radius/lg`); the code keeps it square against the divider lines. Decide which is right.
 - **The engine issues in §4.7.**
 
 ## 12. Decision log
@@ -428,3 +428,4 @@ Update the Figma components to match.
 | 2026-09-27 | Archived tests can be revisited: filing stores a snapshot; tests reopen on Results and source sheets reopen in Review. Replacing an unfinished test offers Undo. |
 | 2026-09-27 | Archive rows: the status sits flush right, as in Figma. On hover or focus it gives way to the "Review results" / "Make a new test" hint, rather than the hidden hint pushing every status left. |
 | 2026-09-27 | Scroll areas scroll vertically only. The slider knob no longer overhangs its track; that overhang had let the Review setup column slide sideways. |
+| 2026-09-27 | Figma Sheet Row Hover now matches the code: the Status hides and a Hint (Label/S + Chevron Right in `text/tertiary`) takes its slot. The hint text is a component property, `Hint`. |
