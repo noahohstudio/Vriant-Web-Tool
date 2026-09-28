@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `437d395`
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `46d2244`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -61,6 +61,7 @@ npm install
 npm run dev                # http://localhost:5173 — add `-- --host` to open it on a phone on the same Wi-Fi
 npm run build              # type-check + production build (run before every push)
 npm run check:generator    # stress-test every template in the bank (§4.7)
+npm run check:detect       # sheet detection against sample problems and sheets (§4.9)
 npm run sample:bank        # print sample questions from one course (COURSE=phys1), to read them as a student would
 ```
 
@@ -74,15 +75,17 @@ A desktop-first prototype of the whole loop, built with Vite 8, React 19 and Typ
 
 | Real | Simulated or not built yet |
 |---|---|
-| **Problem bank:** Physics I (Ph 112): 108 original templates across all 48 concepts (39 warm-up · 45 standard · 24 challenge) | **Reading uploaded sheets.** Every upload still loads the sample *Kinematics — Worksheet 4*. Real detection is Phase B (§10) |
+| **Problem bank:** Physics I (Ph 112): 108 original templates across all 48 concepts (39 warm-up · 45 standard · 24 challenge) | **Handwritten sheets.** Text recognition reads typed or printed text; handwriting mostly fails |
 | **Concept map:** 11 courses and 210 concepts, including those without problems yet | **Every other course's problems**: Calculus I is next (§10, Phase A) |
-| **Topics screen:** search in your own words or browse by course, then pick topics and practice without a sheet | **Photo text recognition (OCR)** |
+| **Topics screen:** search in your own words or browse by course, then pick topics and practice without a sheet | **Figures and diagrams** on a sheet are ignored; only text is read |
 | **Honest coverage:** "Not in Vriant yet" with the closest ready topics, wherever a topic has no problems | **Paper hand-in.** It grades the answers typed in the app |
 | Tests draw problems by concept at a difficulty tier; variants get fresh numbers and computed answers | **Multi-part and symbolic answers** (a vector, f′(x)): one number or one option per question |
-| Grading: tolerance, common-mistake feedback, wrong sign, wrong power of ten; reads arithmetic like 27/5.5, π/4, 3×10⁸ | PDF previews |
+| Grading: tolerance, common-mistake feedback, wrong sign, wrong power of ten; reads arithmetic like 27/5.5, π/4, 3×10⁸ | **Detection accuracy** on unfamiliar wording: about 85% of problems land in the right unit, 70% on the exact concept (§4.9) |
 | KaTeX worked solutions and inline maths in prompts; "Try a similar one"; "Practice these again" | Mobile layout, camera-first capture, print layout |
 | Archive with classes; filed tests reopen on Results, and their course file loads on demand | |
 | Loading screen (once per session); Signature / Light / Dark themes; keyboard shortcuts | |
+| **Reading real sheets, on the device:** PDF text (pdf.js), photos and scanned PDFs (Tesseract OCR), pasted or plain text → numbered problems → concepts, with a sure/guess/unknown confidence | |
+| **Review for scans:** what we read beside the original page, each problem's topic changeable (likely topics + search), sketches and proofs flagged, failures that lead to Topics | |
 
 **Storage** (all on the device):
 - **The archive:** in `localStorage` (`vriant:archive:v1`).
@@ -98,7 +101,9 @@ A desktop-first prototype of the whole loop, built with Vite 8, React 19 and Typ
 ### 4.1 Pipeline
 
 ```
-Intake ─ upload (detection SIMULATED → sample sheet)  or  "Pick topics instead"
+Intake ─ drop / choose / paste a sheet  or  "Pick topics instead"                          src/components/dropzone.tsx
+  │  scanFile(): readSheetFile() → page texts + page pictures (PDF text · OCR · text)       src/lib/read.ts (lazy)
+  │              detectSheet() → problems → concepts (keywords + similarity to the bank)   src/lib/detect.ts (lazy)
   │                                                        │
   │                                          Topics ─ search / browse / pick concepts        src/screens/topics.tsx
   ▼                                                        ▼
@@ -126,7 +131,9 @@ handIn() → grade() per question → Results (feedback, worked steps) → fileR
 | `src/lib/bank.ts` | Registry: finds `src/bank/courses/*.ts` itself; `ensureFor()`, `getTemplate()`, `templatesFor()`, legacy id aliases |
 | `src/lib/problems.ts` | Engine: formatting, `promptParts()`, value generation, `buildQuestions()`, `buildFrom()`, `makeChoices()`, `grade()`, `parseNumber()`, `workedSteps()`, `sampleSheet()` |
 | `src/lib/topics.ts` | Coverage and search: `isReady()`, `searchConcepts()`, `suggestionsFor()`, `suggestionsForQuery()` |
-| `src/lib/store.ts` | Flow and state: `loadSheet()` (**simulated scan**), `practiceTopics()`, `generate()`, `handIn()`, `fileResults()`, `openArchived()`, `ready()` (startup) |
+| `src/lib/store.ts` | Flow and state: `scanFile()` (real reading), `setProblemConcept()`, `loadSheet()` (the sample sheet), `practiceTopics()`, `generate()`, `handIn()`, `fileResults()`, `openArchived()`, `ready()` (startup) |
+| `src/lib/read.ts` | Reading files in the browser: PDF text layer and page pictures (`pdfjs-dist`), OCR (`tesseract.js`), plain text; readable errors. Loaded on upload |
+| `src/lib/detect.ts` | Splitting text into problems and matching each to a concept (§4.9). Pure, so `check:detect` can test it |
 | `src/screens/topics.tsx` | Topics screen, course cards, concept rows, the shared `NotYet` panel |
 | `scripts/check-generator.mjs` · `scripts/sample-bank.mjs` | The bank's stress test (§4.7) · sample questions printed for review |
 | `docs/authoring.md` | **The full guide to writing templates**, detection fixtures and keywords |
@@ -244,7 +251,32 @@ It also reports ambiguous variants. Use `SEEDS=400` for a longer run, or `COURSE
 | 1 | **The significant-figures policy is undecided.** Physics answers always show 3 s.f. | Decide: match the least precise input, or keep 3 s.f. and say so in the UI |
 | 2 | **One answer per question.** Vectors, matrices and multi-part answers can't be typed, so templates ask for one component, a magnitude or a determinant | A multi-field answer box, if students miss it |
 | 3 | **No symbolic answers.** "Find f′(x)" can't be graded, so templates ask for a value, such as f′(2) | Keep numeric; revisit only with a small expression checker |
-| 4 | **Scanning is simulated** | Phase B |
+| 4 | **Detection misses unfamiliar wording** (see §4.9) | More keywords from real sheets; the per-problem topic picker covers the rest |
+
+### 4.9 Reading sheets (`src/lib/read.ts`, `src/lib/detect.ts`)
+
+Everything happens on the student's device; nothing is uploaded.
+
+1. **Reading** (`readSheetFile`):
+   - **PDFs:** the text layer via `pdfjs-dist`, rebuilt into lines (raised small digits become superscripts, big gaps become blank lines). Each page is also rendered to a picture for the Review screen. Up to 20 pages, 40 MB.
+   - **Scanned PDFs** (almost no text) and **photos:** Tesseract OCR (`tesseract.js`). Its engine and English model come from the jsDelivr CDN the first time (a few MB, then cached by the browser). The picture itself never leaves the device.
+   - **Text:** pasted text (⌘V on Intake) or a `.txt` file.
+   - **Errors** say what to do: unsupported type, password-protected PDF, OCR couldn't load, no problems found. Each offers "Try another file" and "Pick topics instead".
+2. **Splitting** (`splitProblems`):
+   - Problems start at `1.` `2)` `(3)` `Problem 4` `Q5` at the start of a line, and numbers must run in order (small gaps allowed), so "2. Use g = 9.8" mid-problem can't split one.
+   - Parts `(a)`, `(b)` stay inside their problem; hyphenated line breaks join back up.
+   - The header lines give the title. With no numbering, each paragraph that asks something becomes a problem.
+3. **Matching** (`matchProblem`), per problem:
+   - **Keywords** from the concept map. Phrases count most, and keywords in the question sentence count extra. Words used everywhere (velocity, force, area…) count less.
+   - **Similarity** (TF-IDF cosine) to the bank's own templates for each concept, so wordings nobody listed still match. Concepts with no templates yet count less here.
+   - **The sheet as a whole:** the course its header names ("Ph 112", "Calculus II") and the course most of its problems match get a boost.
+   - **Confidence:** *sure* (ticked, shown plainly), *guess* ("Check", not ticked), or *unknown* ("Topic not recognized"). Every problem keeps its top candidates for the topic picker.
+   - Sketches and proofs are left out, with "Practice its topic anyway".
+4. **Checking** (`npm run check:detect`):
+   - Sample problems and multi-problem sheets per course in `scripts/fixtures/detect/<course>.json`.
+   - Fails below 90% right-unit.
+   - Physics I: 98% unit on its fixtures. On a fresh batch written without tuning, 17/20 unit and 14/20 concept; sure matches are right 100/101 times.
+   - Real sheets for testing go in `scripts/fixtures/private/` (git-ignored).
 
 ---
 
@@ -260,15 +292,15 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 
 | # | Screen | Job & current behavior |
 |---|---|---|
-| 01 | [Intake](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1445) | Drop, choose, photograph or paste a sheet, try the sample, or **Pick topics instead**. The rail shows recent sheets and classes. **Scan animation:** a graphite scanner head, a secondary-ink loader, broad captions. |
+| 01 | [Intake](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1445) | Drop, choose, photograph or paste a sheet (a file or text), try the sample, or **Pick topics instead**. The rail shows recent sheets and classes. **Scan animation:** a graphite scanner head; captions follow the real stages ("Reading page 2 of 3", "Recognizing the text"); the loader sweeps until reading finishes. **Failed:** why, plus Try another file / Pick topics instead. |
 | 01b | Topics *(not in Figma yet)* | "What are you studying?" Search in your own words, or browse course cards and tick concepts. Concepts without problems are marked **Not yet**; **Similar** opens the `NotYet` panel with the closest ready topics. The rail lists picks, "Make a practice test", and coverage per course. |
-| 02 | [Review](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1505) | **From a scan:** the rendered page with Detected Regions; the setup list names each problem's concept. **From topics:** a topic list, where a not-yet topic can be swapped for a suggestion. **Setup:** Questions slider 1–12 (type up to 30), **Difficulty** Warm-up · Standard · Challenge, Time myself. |
+| 02 | [Review](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1505) | **From a scan:** "What we read" (the problems as text, with Detected Regions labelled by topic) or the **Original** page; a note says how it was read. The setup list names each problem's topic, marks guesses **Check**, and has a **Change**/**Choose** picker (likely topics, then search). Topics not in Vriant yet offer close ready ones. **From topics:** a topic list, where a not-yet topic can be swapped for a suggestion. **Setup:** Questions slider 1–12 (type up to 30), **Difficulty** Warm-up · Standard · Challenge, Time myself. |
 | 03 | [Practice](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1565) | One card at a time, headed by the unit label (e.g. KINEMATICS). **Variant** tag when it's the sheet's own problem with new numbers; **Practice** when it's another problem on the same concept. Maths renders inline. Keyboard shortcuts; smooth hint. |
 | 04 | [Hand in](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1622) | **Typed** (instant) or **paper** (simulated). Blanks count as skipped. |
 | 05 | [Results](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1678) | Score, to-review list, per-question detail: answer, expected value, feedback, worked solution. "Try a similar one" and "Practice these again". **Keep it?** files the test to a class. |
 | 06 | [Archive](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1734) | Search, filter, class folders, sheet rows. The status sits flush right; on hover it gives way to what a click does. Filed tests reopen (their course file loads first); source sheets reopen in Review. |
 
-**States not built yet:** detection results and failures (no readable text, unsupported file, nothing matched → Topics), low-confidence matches, offline, very long prompts or figures. Mobile and camera-first capture.
+**States not built yet:** offline, very long prompts or figures. Mobile and camera-first capture.
 
 ---
 
@@ -426,17 +458,13 @@ When a token changes, update Figma and `tokens.css` together.
 
 ### Phase B — Read real sheets, for free, in the browser
 
-1. **Typed PDFs:**
-   - Read the text layer with `pdfjs-dist`, loaded only when a PDF is dropped.
-   - Split the text into problems by their numbering.
-   - Score each problem against the concept map's keywords, units and symbols.
-2. **Review:**
-   - Each region is labelled with its concept.
-   - Weak matches start as Detected, not selected.
-   - Unmatched or not-yet concepts show the `NotYet` panel.
-3. **Failure states:** no readable text, unsupported file, or nothing matched, each leading to the Topics screen.
-4. **Photos:** OCR with `tesseract.js`, lazily loaded and cached. It's a few MB the first time.
-5. **`npm run check:detect`:** synthetic sheets plus real Cooper sheets kept in a git-ignored folder. Target: at least 90% of problems on typed sheets matched to the right unit.
+**Done** (§4.9): PDF text, OCR for photos and scanned PDFs, pasted text, splitting, matching with confidence, the Review states, failure states, and `check:detect`.
+
+**Next:**
+- **Real sheets:** collect real Cooper sheets in `scripts/fixtures/private/`, and tune keywords from their misses.
+- **Handwriting:** Tesseract handles print, not handwriting. Say so plainly on photo uploads; revisit if free handwriting models appear.
+- **Figures:** a problem that depends on a diagram ("from the graph shown") could be flagged "needs its figure".
+- **Photos:** keeping the OCR files on our own site instead of jsDelivr (about 10 MB of static files) would make photo reading independent of a third-party CDN.
 
 ### Phase C — Product polish and reach
 
@@ -477,7 +505,7 @@ When a token changes, update Figma and `tokens.css` together.
 
 **Other gaps:**
 - **Coverage:** only Physics I has problems; the other 10 courses show as Not yet.
-- **Scanning is simulated:** uploads still load the sample sheet.
+- **Detection is keyword- and similarity-based:** it misses unfamiliar wording, and can't see figures. Guesses are flagged; the student can change any topic.
 - **Accessibility:** hidden scroll bars reduce discoverability on long pages, and there's been no screen-reader audit.
 - **Snapshot compatibility:**
   - Archived tests store raw `Question` objects that point at template ids.
@@ -518,3 +546,4 @@ When a token changes, update Figma and `tokens.css` together.
 | 2026-09-28 | Students can practice without a sheet: a Topics screen for searching in their own words or browsing by course; picked topics become a practice sheet. |
 | 2026-09-28 | Handoff revamped around the bank, coverage and the phased roadmap (§10). |
 | 2026-09-28 | Bank engine ready for every course: course files register themselves from `src/bank/courses/`; maths answers show and grade exactly (fractions, π, roots); prompts can use derived values; worded "which one?" questions; per-template tolerance. `docs/authoring.md` is the guide for writing banks. |
+| 2026-09-28 | Sheets are read for real, on the device: PDF text (pdf.js), OCR for photos and scanned PDFs (Tesseract, engine from jsDelivr on first use), pasted text. Problems are matched to concepts by keywords plus similarity to the bank's templates; guesses are marked "Check" and every topic can be changed. |
