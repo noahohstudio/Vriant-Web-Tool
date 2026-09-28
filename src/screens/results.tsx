@@ -15,7 +15,7 @@ function ResultRow({ q, g, active }: { q: Question; g: Grade; active: boolean })
   const detail =
     g.result === 'skipped'
       ? 'Skipped'
-      : q.kind === 'choice'
+      : q.kind !== 'free'
         ? `You chose ${chosen !== undefined ? LETTERS[chosen] : '—'} · answer ${LETTERS[q.correct ?? 0]}`
         : `You wrote ${typed.trim()} · expected ${withUnit(fmtAnswer(t, q.answer), t.unit)}`;
   return (

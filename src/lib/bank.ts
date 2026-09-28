@@ -1,10 +1,11 @@
-// The problem bank registry. Each course's templates are one lazily loaded file (src/bank/<course>.ts);
-// only the concept map in src/bank/taxonomy.ts ships with the app itself.
+// The problem bank registry. Each course's templates are one lazily loaded file, src/bank/courses/<course id>.ts,
+// found automatically: adding a file adds the course. Only the concept map (src/bank/taxonomy.ts) ships with the app.
 import type { Template } from './problems';
 
-const LOADERS: Record<string, () => Promise<{ default: Template[] }>> = {
-  phys1: () => import('../bank/physics-1'),
-};
+const FILES = import.meta.glob<{ default: Template[] }>('../bank/courses/*.ts');
+const LOADERS: Record<string, () => Promise<{ default: Template[] }>> = Object.fromEntries(
+  Object.entries(FILES).map(([path, load]) => [path.slice(path.lastIndexOf('/') + 1, -'.ts'.length), load]),
+);
 
 /** Ids from before the bank existed. Archived tests still refer to them. */
 const ALIASES: Record<string, string> = {

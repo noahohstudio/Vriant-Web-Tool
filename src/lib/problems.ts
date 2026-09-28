@@ -6,12 +6,16 @@ import { getTemplate, templatesFor } from './bank';
 export type Difficulty = 'easier' | 'same' | 'harder';
 export type Tier = 1 | 2 | 3;
 export type Values = Record<string, number>;
+/** Values worked out from the drawn ones, for the prompt and steps: a number, or ready-made text/TeX such as "x^2 - 5x + 6". */
+export type Derived = Record<string, number | string>;
 /** `fixed` ranges ignore difficulty; `int` values stay whole; `nz` values are never 0. */
 export type Param = { min: number; max: number; step: number; dp: number; unit: string; fixed?: boolean; int?: boolean; nz?: boolean };
 /** Plain text, a value with its unit, or inline TeX (values written as \p{key}). */
 export type PromptToken = string | { k: string } | { tex: string };
 export type Step = { tex: string; note?: string };
 export type Mistake = { value: number; why: string; partial?: boolean };
+/** A wrong option in a worded ("which one?") question, with the feedback for choosing it. */
+export type Choice = { text: string; why: string };
 
 export type Template = {
   id: string;
@@ -20,16 +24,23 @@ export type Template = {
   title: string;
   params: Record<string, Param>;
   prompt: PromptToken[];
+  /** The numeric answer. Worded templates (`pick`) don't have one. */
   answer: (v: Values) => number;
   unit: string;
-  /** Maths answers: whole numbers show as whole numbers, not "12.0". */
+  /** Maths answers: whole numbers stay whole, and fractions, π and roots show exactly (8π/3, not 8.38). */
   exact?: boolean;
+  /** Worded questions: the right option and the wrong ones (text, with $…$ for inline TeX). Always multiple choice. */
+  pick?: (v: Values) => { answer: string; wrong: Choice[] };
+  /** Extra values for the prompt and steps, worked out from the drawn ones. */
+  derive?: (v: Values) => Derived;
+  /** Relative grading tolerance, when answers depend on table lookups or rounding (0.02 = 2%). */
+  tol?: number;
   steps: (f: (k: string) => string, ans: string, v: Values) => Step[];
   mistakes: (v: Values) => Mistake[];
   valid?: (v: Values) => boolean;
   hint: string;
-  /** Hand-checked cases; `npm run check:generator` confirms the formula reproduces them. */
-  ref?: { v: Values; a: number }[];
+  /** Hand-checked cases; `npm run check:generator` confirms the formula (or `pick`) reproduces them. */
+  ref?: { v: Values; a: number | string }[];
 };
 
 // ——— Sheets ————————————————————————————————————————————————
@@ -90,16 +101,99 @@ export function fmtSig(x: number, sig = 3, tex = false): string {
   return r.toFixed(Math.max(0, sig - 1 - mag));
 }
 
-function fmtExact(x: number, tex: boolean) {
-  const whole = Math.round(x);
-  if (Math.abs(x - whole) < 1e-9 && Math.abs(x) < 1e6) return String(whole === 0 ? 0 : whole);
-  const s = fmtSig(x, 4, tex);
-  return s.includes('10') && /[×\\]/.test(s) ? s : s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s;
+const isWhole = (x: number) => Math.abs(x - Math.round(x)) <= 1e-9 * Math.max(1, Math.abs(x));
+
+/** p/q with q ≤ maxDen when x is (to 1e-9) that fraction, found by continued fractions. */
+function ratio(x: number, maxDen: number): [number, number] | null {
+  const a = Math.abs(x);
+  let [h0, h1, k0, k1, v] = [0, 1, 1, 0, a];
+  for (let i = 0; i < 24; i++) {
+    const n = Math.floor(v);
+    const [h2, k2] = [n * h1 + h0, n * k1 + k0];
+    if (k2 > maxDen) return null;
+    if (Math.abs(h2 / k2 - a) <= 1e-9 * Math.max(1, a)) return [x < 0 ? -h2 : h2, k2];
+    [h0, h1, k0, k1] = [h1, h2, k1, k2];
+    const r = v - n;
+    if (r < 1e-12) return null;
+    v = 1 / r;
+  }
+  return null;
 }
 
-/** How an answer is shown: 3 significant figures for physics, exact-looking numbers for maths. */
+type Form = { kind: 'int' | 'dec' | 'frac' | 'pi' | 'root'; text: string; tex: string };
+const ROOTS = [2, 3, 5, 6, 7, 10];
+
+/** Trim a 4-significant-figure decimal: 2.500 → 2.5, 5.000 × 10⁻⁵ → 5 × 10⁻⁵. */
+function trimDec(x: number, tex: boolean) {
+  const s = fmtSig(x, 4, tex);
+  if (/[×\\]/.test(s)) return s.replace(/^(-?\d+)\.?(\d*?)0*(?=\s)/, (_, i: string, d: string) => (d ? `${i}.${d}` : i));
+  return s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s;
+}
+
+/** A multiple of a symbol: 2π/3, −π/4, 3√2/2. */
+function symbolic(p: number, q: number, sym: string, texSym: string): { text: string; tex: string } {
+  const sign = p < 0 ? '-' : '';
+  const n = Math.abs(p) === 1 ? '' : String(Math.abs(p));
+  return {
+    text: `${sign}${n}${sym}${q === 1 ? '' : `/${q}`}`,
+    tex: q === 1 ? `${sign}${n}${texSym}` : `${sign}\\frac{${n}${texSym}}{${q}}`,
+  };
+}
+
+/** How a maths answer reads exactly: whole numbers, short decimals, fractions, then multiples of π or √n. */
+export function exactForm(x: number): Form | null {
+  if (!Number.isFinite(x)) return null;
+  if (isWhole(x) && Math.abs(x) < 1e6) {
+    const s = String(Math.round(x) || 0);
+    return { kind: 'int', text: s, tex: s };
+  }
+  // Decimals that end within three places read best as decimals (0.75, 2.35); others as fractions (1/3, 5/7).
+  if (isWhole(x * 1000) && Math.abs(x) >= 1e-3) return { kind: 'dec', text: trimDec(x, false), tex: trimDec(x, true) };
+  const r = ratio(x, 60);
+  if (r) {
+    const [p, q] = r;
+    return { kind: 'frac', text: `${p}/${q}`, tex: `${p < 0 ? '-' : ''}\\frac{${Math.abs(p)}}{${q}}` };
+  }
+  const pi = ratio(x / Math.PI, 12);
+  if (pi) return { kind: 'pi', ...symbolic(pi[0], pi[1], 'π', '\\pi') };
+  for (const n of ROOTS) {
+    const rt = ratio(x / Math.sqrt(n), 12);
+    if (rt) return { kind: 'root', ...symbolic(rt[0], rt[1], `√${n}`, `\\sqrt{${n}}`) };
+  }
+  return null;
+}
+
+/** A maths value, exactly when it can be (see exactForm), else 4 significant figures. */
+export const fmtExact = (x: number, tex: boolean) => {
+  const f = exactForm(x);
+  return f ? (tex ? f.tex : f.text) : trimDec(x, tex);
+};
+
+/** How an answer is shown: 3 significant figures for physics; exact forms for maths (8π/3, 1/3, 12). */
 export const fmtAnswer = (t: Template, x: number) => (t.exact ? fmtExact(x, false) : fmtSig(x));
 export const fmtAnswerTex = (t: Template, x: number) => (t.exact ? fmtExact(x, true) : fmtSig(x, 3, true));
+/** "≈ 8.378" beside an exact form that isn't already a plain decimal; empty otherwise. */
+export function fmtApprox(t: Template, x: number) {
+  const f = t.exact ? exactForm(x) : null;
+  return f && (f.kind === 'frac' || f.kind === 'pi' || f.kind === 'root') ? `≈ ${trimDec(x, false)}` : '';
+}
+
+/** Multiple-choice options, formatted alike so the right one never stands out: exact forms only when every
+ *  option has the same kind of form (all fractions and decimals, or all multiples of π), otherwise decimals. */
+function fmtOptions(t: Template, list: number[]): string[] {
+  if (!t.exact) return list.map((x) => fmtSig(x));
+  const forms = list.map(exactForm);
+  const plain = forms.every((f) => f && (f.kind === 'int' || f.kind === 'dec' || f.kind === 'frac'));
+  const same = forms.every((f) => f && f.kind === forms[0]!.kind && (f.kind === 'pi' || f.kind === 'root'));
+  return plain || same ? forms.map((f) => f!.text) : list.map((x) => trimDec(x, false));
+}
+
+/** An option's label, with its unit. Worded options may contain $…$ inline TeX. */
+export function choiceText(q: Question, i: number): string {
+  if (q.kind === 'text') return q.options?.[i] ?? '';
+  const t = getTemplate(q.templateId);
+  return withUnit(fmtOptions(t, q.choices ?? [])[i] ?? '', t.unit);
+}
 
 export const withUnit = (value: string, unit: string) => (!unit ? value : unit === '°' || unit === '%' ? `${value}${unit}` : `${value} ${unit}`);
 
@@ -112,14 +206,43 @@ const round6 = (x: number) => Math.round(x * 1e6) / 1e6;
 
 export type PromptPart = { text: string; changed: boolean } | { tex: string; changed: false };
 
-/** Prompt segments; `changed` marks values that differ from the original problem. */
+/** Formats `{k}` / `\p{k}` values: drawn values to their decimals, derived numbers exactly, derived text as written. */
+function valueFormatter(t: Template, values: Values, dps: Record<string, number>, tex: boolean) {
+  const derived = t.derive?.(values) ?? {};
+  return (k: string): { s: string; drawn: boolean; text: boolean } => {
+    if (k in t.params) return { s: values[k].toFixed(dps[k] ?? t.params[k].dp), drawn: true, text: false };
+    const d = derived[k];
+    if (typeof d === 'number') return { s: fmtExact(d, tex), drawn: false, text: false };
+    return { s: d ?? `\\p{${k}}`, drawn: false, text: true };
+  };
+}
+
+/** Prompt segments; `changed` marks values that differ from the original problem. Derived text is never marked. */
 export function promptParts(t: Template, values: Values, dps: Record<string, number>, changed: boolean): PromptPart[] {
-  const fmt = (k: string) => values[k].toFixed(dps[k] ?? t.params[k].dp);
+  const plain = valueFormatter(t, values, dps, false);
+  const tex = valueFormatter(t, values, dps, true);
   return t.prompt.map((tok) => {
     if (typeof tok === 'string') return { text: tok, changed: false };
-    if ('k' in tok) return { text: withUnit(fmt(tok.k), t.params[tok.k].unit), changed };
-    return { tex: tok.tex.replace(/\\p\{(\w+)\}/g, (_, k: string) => (changed ? `\\htmlClass{v}{${fmt(k)}}` : fmt(k))), changed: false };
+    if ('k' in tok) {
+      const v = plain(tok.k);
+      return { text: v.drawn ? withUnit(v.s, t.params[tok.k].unit) : v.s, changed: changed && !v.text };
+    }
+    return {
+      tex: tok.tex.replace(/\\p\{(\w+)\}/g, (_, k: string) => {
+        const v = tex(k);
+        return changed && !v.text ? `\\htmlClass{v}{${v.s}}` : v.s;
+      }),
+      changed: false,
+    };
   });
+}
+
+/** Text with $…$ inline TeX, split into parts (worded options). */
+export function richParts(s: string): ({ text: string } | { tex: string })[] {
+  return s
+    .split(/(\$[^$]+\$)/)
+    .filter(Boolean)
+    .map((p) => (p.length > 2 && p.startsWith('$') && p.endsWith('$') ? { tex: p.slice(1, -1) } : { text: p }));
 }
 
 /** A template's prompt as plain text with the given values (used for sheets saved before problems carried text). */
@@ -152,8 +275,14 @@ function shuffle<T>(list: T[], rng: () => number): T[] {
   return out;
 }
 
-/** True when a common mistake lands so close to the answer that grading couldn't tell them apart. */
+/** True when a common mistake lands so close to the answer that grading couldn't tell them apart
+ *  (for worded questions: when the options aren't distinct). */
 export function isAmbiguous(t: Template, values: Values) {
+  if (t.pick) {
+    const { answer, wrong } = t.pick(values);
+    const texts = wrong.map((w) => w.text);
+    return !answer || !wrong.length || texts.includes(answer) || new Set(texts).size < texts.length;
+  }
   const a = t.answer(values);
   if (!Number.isFinite(a)) return true;
   return t.mistakes(values).some((m) => Number.isFinite(m.value) && Math.abs(m.value - a) <= Math.max(Math.abs(a) * 0.05, 1e-9));
@@ -193,6 +322,7 @@ function makeValues(t: Template, original: Values, diff: Difficulty, rng: () => 
   return last;
 }
 
+/** `free`: type a number · `choice`: pick one of four numbers · `text`: pick a worded option (always, for `pick` templates). */
 export type Question = {
   id: string;
   n: number;
@@ -200,9 +330,12 @@ export type Question = {
   templateId: string;
   values: Values;
   dps: Record<string, number>;
-  kind: 'free' | 'choice';
+  kind: 'free' | 'choice' | 'text';
+  /** The numeric answer (0 for worded questions). */
   answer: number;
   choices?: number[];
+  /** Worded options, for `text` questions. */
+  options?: string[];
   correct?: number;
 };
 
@@ -224,11 +357,20 @@ function makeChoices(t: Template, values: Values, answer: number, rng: () => num
   return { choices: order, correct: order.indexOf(answer) };
 }
 
+/** A worded question: the right option and up to three wrong ones, in a random order. */
+function makeOptions(t: Template, values: Values, rng: () => number) {
+  const { answer, wrong } = t.pick!(values);
+  const options = shuffle([answer, ...shuffle(wrong, rng).slice(0, 3).map((w) => w.text)], rng);
+  return { options, correct: options.indexOf(answer) };
+}
+
 function makeQuestion(t: Template, problemN: number, i: number, seed: number, diff: Difficulty, rng: () => number, kind: Question['kind'], original: Values): Question {
   const { values, dps } = makeValues(t, original, diff, rng);
+  const id = `q${seed.toString(36)}-${i}`;
+  if (t.pick) return { id, n: i + 1, problemN, templateId: t.id, values, dps, kind: 'text', answer: 0, ...makeOptions(t, values, rng) };
   const answer = t.answer(values);
-  const q: Question = { id: `q${seed.toString(36)}-${i}`, n: i + 1, problemN, templateId: t.id, values, dps, kind, answer };
-  return kind === 'choice' ? { ...q, ...makeChoices(t, values, answer, rng) } : q;
+  const q: Question = { id, n: i + 1, problemN, templateId: t.id, values, dps, kind: kind === 'text' ? 'choice' : kind, answer };
+  return q.kind === 'choice' ? { ...q, ...makeChoices(t, values, answer, rng) } : q;
 }
 
 /** Something to practise: a problem's concept (problemN 0 when a concept was picked without a sheet). */
@@ -386,17 +528,27 @@ export function parseNumber(raw: string): number | null {
   return v === null || !Number.isFinite(v) ? null : v;
 }
 
-function tolerance(ans: number) {
+/** How close counts as right. Physics: 1%, or half a unit in the 3rd significant figure. Maths (`exact`): whole
+ *  answers must be exact; others to 3 significant figures. A template's `tol` widens either. */
+function tolerance(t: Template, ans: number) {
   const mag = Math.floor(Math.log10(Math.abs(ans) || 1));
-  return Math.max(Math.abs(ans) * 0.01, 0.5 * 10 ** (mag - 2));
+  const sig3 = 0.5 * 10 ** (mag - 2);
+  const base = t.exact ? (isWhole(ans) ? 1e-9 * Math.max(1, Math.abs(ans)) : sig3) : Math.max(Math.abs(ans) * 0.01, sig3);
+  return t.tol ? Math.max(base, Math.abs(ans) * t.tol) : base;
 }
 
 const G_CORRECT: Grade = { result: 'correct', points: POINTS, feedback: 'Correct.' };
 
 export function grade(q: Question, typed: string | undefined, chosen: number | undefined): Grade {
   const t = getTemplate(q.templateId);
+  if (q.kind === 'text') {
+    if (chosen === undefined) return { result: 'skipped', points: 0, feedback: 'Skipped — no choice made.' };
+    if (chosen === q.correct) return G_CORRECT;
+    const w = t.pick?.(q.values).wrong.find((x) => x.text === q.options?.[chosen]);
+    return { result: 'incorrect', points: 0, feedback: w?.why ?? 'Not quite — compare your reasoning with the worked solution.' };
+  }
   const mistakes = t.mistakes(q.values);
-  const tol = tolerance(q.answer);
+  const tol = tolerance(t, q.answer);
   const matchMistake = (x: number) => mistakes.find((m) => Math.abs(x - m.value) <= Math.max(Math.abs(m.value) * 0.02, tol));
 
   if (q.kind === 'choice') {
@@ -417,12 +569,16 @@ export function grade(q: Question, typed: string | undefined, chosen: number | u
     const scaled = q.answer * 10 ** k;
     if (Math.abs(x - scaled) <= Math.abs(scaled) * 0.01) return { result: 'partial', points: POINTS / 2, feedback: 'Right digits, wrong power of ten — check your units and conversions.' };
   }
-  if (Math.abs(x - q.answer) <= Math.abs(q.answer) * 0.03) return { result: 'partial', points: POINTS / 2, feedback: 'Close — carry more digits until the final step, then round.' };
+  // Rounding is only a near miss when the answer isn't a whole number that should be exact.
+  const exactWhole = t.exact && isWhole(q.answer);
+  if (!exactWhole && Math.abs(x - q.answer) <= Math.abs(q.answer) * 0.03) return { result: 'partial', points: POINTS / 2, feedback: 'Close — carry more digits until the final step, then round.' };
   return { result: 'incorrect', points: 0, feedback: 'Not quite — compare your method with the worked solution.' };
 }
 
 export function workedSteps(q: Question): Step[] {
   const t = getTemplate(q.templateId);
-  const f = (k: string) => q.values[k].toFixed(q.dps[k]);
-  return t.steps(f, fmtAnswerTex(t, q.answer), q.values);
+  const fmt = valueFormatter(t, q.values, q.dps, true);
+  const f = (k: string) => fmt(k).s;
+  const ans = q.kind === 'text' ? (q.options?.[q.correct ?? 0] ?? '') : fmtAnswerTex(t, q.answer);
+  return t.steps(f, ans, q.values);
 }

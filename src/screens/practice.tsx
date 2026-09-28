@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Dropzone } from '../components/dropzone';
-import { pad, QuestionCard, TestProgress } from '../components/question';
+import { optionCount, pad, QuestionCard, Rich, TestProgress } from '../components/question';
 import { Elapsed, RailRow } from '../components/shell';
 import { Button, Icon, Kbd, loadKatex, SectionLabel } from '../components/ui';
 import { getTemplate } from '../lib/bank';
-import { fmtAnswer, withUnit, type Question } from '../lib/problems';
+import { choiceText, type Question } from '../lib/problems';
 import { choose, go, goQuestion, handIn, nextQuestion, toggleFlag, useStore, type Attempt } from '../lib/store';
 
 const isAnswered = (a: Attempt, id: string) => !!a.answers[id]?.trim() || a.choices[id] !== undefined;
@@ -34,9 +34,9 @@ export function PracticeMain() {
       if (k === 'h') setHintFor((h) => (h === q.id ? null : q.id));
       else if (k === 'f') toggleFlag(q.id);
       else if (k === 's' || k === 'enter') nextQuestion();
-      else if (q.kind === 'choice' && /^[1-4a-d]$/.test(k)) {
+      else if (q.kind !== 'free' && /^[1-4a-d]$/.test(k)) {
         const i = /\d/.test(k) ? Number(k) - 1 : k.charCodeAt(0) - 97;
-        if (i < (q.choices?.length ?? 0)) choose(q.id, i);
+        if (i < optionCount(q)) choose(q.id, i);
       } else return;
       e.preventDefault();
     };
@@ -175,7 +175,7 @@ function AnswerPreview({ q, attempt }: { q: Question; attempt: Attempt }) {
     <div className="answer answer--static">
       <span className="answer__prefix">Q{q.n}</span>
       <span className="answer__div" aria-hidden="true" />
-      <span className="answer__value">{q.kind === 'choice' && chosen !== undefined ? withUnit(fmtAnswer(t, q.choices![chosen]), t.unit) : attempt.answers[q.id]}</span>
+      <span className="answer__value">{q.kind !== 'free' ? chosen !== undefined && <Rich text={choiceText(q, chosen)} /> : attempt.answers[q.id]}</span>
       <span className="spacer" />
       {q.kind === 'free' && <span className="answer__unit">{t.unit}</span>}
     </div>

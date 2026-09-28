@@ -1,6 +1,6 @@
 // Physics I: Mechanics (Cooper Ph 112). Every problem here is original; answers come from the formula.
-// Concepts and their ids are in ./taxonomy.ts. `ref` cases are hand-checked by `npm run check:generator`.
-import { deg, G, n, rad, tpl } from './kit';
+// Concepts and their ids are in ../taxonomy.ts. `ref` cases are hand-checked by `npm run check:generator`.
+import { deg, G, n, rad, tpl } from '../kit';
 
 /** A unit after a TeX value: `${ans}${u('m/s')}^2`. */
 const u = (s: string) => `\\ \\text{${s}}`;

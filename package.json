@@ -2,14 +2,15 @@
   "name": "vriant-web-tool",
   "private": true,
   "version": "0.1.0",
-  "description": "Vriant \u2014 turn this week's homework into next week's practice. Prototype.",
+  "description": "Vriant — turn this week's homework into next week's practice. Prototype.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "check:generator": "node scripts/check-generator.mjs"
+    "check:generator": "node scripts/check-generator.mjs",
+    "sample:bank": "node scripts/sample-bank.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

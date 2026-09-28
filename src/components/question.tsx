@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { unitLabel } from '../bank/taxonomy';
 import { getTemplate } from '../lib/bank';
-import { fmtAnswer, POINTS, promptParts, withUnit, workedSteps, type Grade, type Question } from '../lib/problems';
+import { choiceText, fmtAnswer, fmtApprox, POINTS, promptParts, richParts, workedSteps, type Grade, type Question } from '../lib/problems';
 import { answer, choose, nextQuestion, toggleFlag, useStore } from '../lib/store';
 import { Button, Icon, IconButton, Tag, TeX } from './ui';
 
@@ -24,6 +24,16 @@ export const Prompt = memo(function Prompt({ q }: { q: Question }) {
           <span key={i}>{p.text}</span>
         ),
       )}
+    </>
+  );
+});
+
+/** Text with $…$ inline TeX: worded options and their labels. */
+export const Rich = memo(function Rich({ text }: { text: string }) {
+  if (!text.includes('$')) return <>{text}</>;
+  return (
+    <>
+      {richParts(text).map((p, i) => ('tex' in p ? <TeX key={i} tex={p.tex} /> : <span key={i}>{p.text}</span>))}
     </>
   );
 });
@@ -58,15 +68,19 @@ function AnswerInput({ q }: { q: Question }) {
   );
 }
 
+/** How many options a multiple-choice or worded question has. */
+export const optionCount = (q: Question) => (q.kind === 'text' ? (q.options?.length ?? 0) : (q.choices?.length ?? 0));
+
 function Choices({ q }: { q: Question }) {
   const chosen = useStore((s) => s.attempt?.choices[q.id]);
-  const t = getTemplate(q.templateId);
   return (
-    <div className="choices" role="radiogroup" aria-label="Choices">
-      {q.choices!.map((c, i) => (
+    <div className={`choices${q.kind === 'text' ? ' choices--text' : ''}`} role="radiogroup" aria-label="Choices">
+      {Array.from({ length: optionCount(q) }, (_, i) => (
         <button key={i} type="button" role="radio" aria-checked={chosen === i} className="choice" onClick={() => choose(q.id, i)}>
           <span className="choice__badge">{LETTERS[i]}</span>
-          <span className="choice__text">{withUnit(fmtAnswer(t, c), t.unit)}</span>
+          <span className="choice__text">
+            <Rich text={choiceText(q, i)} />
+          </span>
         </button>
       ))}
     </div>
@@ -153,15 +167,17 @@ export function GradedAnswer({ q, g }: { q: Question; g: Grade }) {
   const chosen = useStore((s) => s.attempt?.choices[q.id]);
   const t = getTemplate(q.templateId);
   const unit = t.unit;
-  if (q.kind === 'choice') {
+  if (q.kind !== 'free') {
     return (
-      <div className="choices">
-        {q.choices!.map((c, i) => {
+      <div className={`choices${q.kind === 'text' ? ' choices--text' : ''}`}>
+        {Array.from({ length: optionCount(q) }, (_, i) => {
           const state = i === q.correct ? 'correct' : i === chosen ? 'incorrect' : '';
           return (
             <div key={i} className={`choice choice--static${state ? ` choice--${state}` : ''}`}>
               <span className="choice__badge">{LETTERS[i]}</span>
-              <span className="choice__text">{withUnit(fmtAnswer(t, c), unit)}</span>
+              <span className="choice__text">
+                <Rich text={choiceText(q, i)} />
+              </span>
               {state && <Icon name={state === 'correct' ? 'check' : 'close'} className={`c-${state}`} />}
             </div>
           );
@@ -175,7 +191,12 @@ export function GradedAnswer({ q, g }: { q: Question; g: Grade }) {
       <span className="answer__div" aria-hidden="true" />
       <span className="answer__value">{typed.trim() || '—'}</span>
       <span className="spacer" />
-      {g.result !== 'correct' && <span className="answer__expected">expected {fmtAnswer(t, q.answer)}</span>}
+      {g.result !== 'correct' && (
+        <span className="answer__expected">
+          expected {fmtAnswer(t, q.answer)}
+          {fmtApprox(t, q.answer) && <span className="c-tertiary"> {fmtApprox(t, q.answer)}</span>}
+        </span>
+      )}
       {unit && <span className="answer__unit">{unit}</span>}
       {g.result === 'partial' ? <span className="answer__half">½</span> : g.result !== 'skipped' && <Icon name={g.result === 'correct' ? 'check' : 'close'} className={`c-${g.result}`} />}
     </div>
