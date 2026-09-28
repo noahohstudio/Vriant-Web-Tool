@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.3 · working prototype on `main` · last updated 27 Sep 2026 · describes the code at commit `dc809b1`
+> **Status:** v0.3 · working prototype on `main` · last updated 27 Sep 2026 · describes the code at commit `e59b5cf`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -264,6 +264,7 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
    - A theme flip costs about 1–5 ms of main-thread work.
    - The theme switch is excluded from the snapshot, so its thumb visibly glides.
    - Browsers without support switch instantly, and `prefers-reduced-motion` turns motion off.
+   - Going where you already are does nothing: the current section's tab is inert, and `go()` skips a same-screen call with nothing to change, so the transition never replays.
 3. **No stock browser controls.**
    - One **Segmented** control with a sliding thumb (theme switch, filters, Off / On).
    - A custom **Slider** (knob follows the pointer, then glides to the nearest stop).
@@ -367,7 +368,7 @@ When a token changes, update Figma and `tokens.css` together.
 | SheetRow (archive) | `screens/archive.tsx` | Whole row opens the item when it has a snapshot. The status tag sits flush right; on hover or focus it gives way to a hint saying what will happen ("Review results" or "Make a new test"). Both share one slot, so nothing shifts |
 | Dropzone | `components/dropzone.tsx` | Idle, drag-over and scanning states. Props: `scanTitle`, `phases`, `allowSample` |
 | QuestionCard, TestProgress, GradedAnswer, WorkedSolution | `components/question.tsx` | Hint uses the smooth reveal |
-| Header, RailRow, ToastHost, Elapsed | `components/shell.tsx` | Toasts offer Undo |
+| Header, RailRow, ToastHost, Elapsed | `components/shell.tsx` | The current tab is inert (Intake stays lit on Review; the logo and New sheet lead back). Toasts offer Undo |
 
 **Removed:** the Figma Toggle (replaced by the Off / On Segmented) and the native select (replaced by Select and Slider).
 
@@ -429,3 +430,4 @@ Update the Figma components to match.
 | 2026-09-27 | Archive rows: the status sits flush right, as in Figma. On hover or focus it gives way to the "Review results" / "Make a new test" hint, rather than the hidden hint pushing every status left. |
 | 2026-09-27 | Scroll areas scroll vertically only. The slider knob no longer overhangs its track; that overhang had let the Review setup column slide sideways. |
 | 2026-09-27 | Figma Sheet Row Hover now matches the code: the Status hides and a Hint (Label/S + Chevron Right in `text/tertiary`) takes its slot. The hint text is a component property, `Hint`. |
+| 2026-09-27 | Clicking where you already are does nothing: the current tab is inert, and same-screen navigation no longer replays the screen transition or adds a history entry. |
