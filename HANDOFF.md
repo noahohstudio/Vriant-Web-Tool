@@ -1,6 +1,8 @@
 # Vriant — Handoff
 
-> **Status:** v0.3 · working prototype on `main` · last updated 27 Sep 2026 · describes the code at commit `e59b5cf`
+> **Status:** v0.3 · working prototype on `main` · last updated 27 Sep 2026 · describes the code at commit `8efa853`
+>
+> **Direction changed at 8efa853 (read first):** no AI at runtime. Problems come from a curated bank in `src/bank/` (one lazily loaded file per course; concept map in `src/bank/taxonomy.ts`; research in `docs/curriculum.md`). Physics I is built (108 templates, 48 concepts). §3–§4 below still describe the older 5-template engine in places and need a full rewrite; the decision log (§12) is current.
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -431,3 +433,7 @@ Update the Figma components to match.
 | 2026-09-27 | Scroll areas scroll vertically only. The slider knob no longer overhangs its track; that overhang had let the Review setup column slide sideways. |
 | 2026-09-27 | Figma Sheet Row Hover now matches the code: the Status hides and a Hint (Label/S + Chevron Right in `text/tertiary`) takes its slot. The hint text is a component property, `Hint`. |
 | 2026-09-27 | Clicking where you already are does nothing: the current tab is inert, and same-screen navigation no longer replays the screen transition or adds a history entry. |
+| 2026-09-27 | Zero running cost: no AI or server at runtime. A bank of original, formula-checked templates, organized by concept, with one lazily loaded file per course. A sheet's concepts decide what gets practised. |
+| 2026-09-27 | Cooper Union's engineering core sets the build order. Wave 1: Physics I, Calculus I, Calculus II, Intro Linear Algebra. National syllabi and frameworks rank how common each concept is (`docs/curriculum.md`). |
+| 2026-09-27 | Physics I bank built: 108 templates, 48 concepts. Difficulty became absolute tiers (Warm-up · Standard · Challenge). Grading reads arithmetic (27/5.5, π/4, 3×10⁸), decimal commas and superscripts, and flags wrong signs. Fixes §4.7 #1, #3, #5, #6, #7, #9. |
+| 2026-09-27 | Loading screen: incline mark, tagline and a construction-line loader, shown once per session. |
