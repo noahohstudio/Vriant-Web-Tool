@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `b97ba27`
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `437d395`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -61,6 +61,7 @@ npm install
 npm run dev                # http://localhost:5173 — add `-- --host` to open it on a phone on the same Wi-Fi
 npm run build              # type-check + production build (run before every push)
 npm run check:generator    # stress-test every template in the bank (§4.7)
+npm run sample:bank        # print sample questions from one course (COURSE=phys1), to read them as a student would
 ```
 
 To start over, use **Settings (sliders icon) → Reset demo data**. It clears the archive and the session.
@@ -77,7 +78,7 @@ A desktop-first prototype of the whole loop, built with Vite 8, React 19 and Typ
 | **Concept map:** 11 courses and 210 concepts, including those without problems yet | **Every other course's problems**: Calculus I is next (§10, Phase A) |
 | **Topics screen:** search in your own words or browse by course, then pick topics and practice without a sheet | **Photo text recognition (OCR)** |
 | **Honest coverage:** "Not in Vriant yet" with the closest ready topics, wherever a topic has no problems | **Paper hand-in.** It grades the answers typed in the app |
-| Tests draw problems by concept at a difficulty tier; variants get fresh numbers and computed answers | **Worded ("which one?") answers**: only numeric answers exist today |
+| Tests draw problems by concept at a difficulty tier; variants get fresh numbers and computed answers | **Multi-part and symbolic answers** (a vector, f′(x)): one number or one option per question |
 | Grading: tolerance, common-mistake feedback, wrong sign, wrong power of ten; reads arithmetic like 27/5.5, π/4, 3×10⁸ | PDF previews |
 | KaTeX worked solutions and inline maths in prompts; "Try a similar one"; "Practice these again" | Mobile layout, camera-first capture, print layout |
 | Archive with classes; filed tests reopen on Results, and their course file loads on demand | |
@@ -120,24 +121,28 @@ handIn() → grade() per question → Results (feedback, worked steps) → fileR
 | File | What lives there |
 |---|---|
 | `src/bank/taxonomy.ts` | **The concept map.** Courses → units → concepts, with stable ids, level (core, common, occasional), a Cooper flag and detection keywords. Ships with the app. |
-| `src/bank/<course>.ts` | **One course's templates**, e.g. `physics-1.ts`, loaded lazily. Each file default-exports `Template[]`. |
-| `src/bank/kit.ts` | Authoring helpers: `tpl()`, compact params, prompt parsing, `G`, `rad`, `deg`, `n()` for intermediate TeX values |
-| `src/lib/bank.ts` | Registry: `LOADERS` (one line per course file), `ensureFor()`, `getTemplate()`, `templatesFor()`, legacy id aliases |
+| `src/bank/courses/<course id>.ts` | **One course's templates**, e.g. `courses/phys1.ts`, loaded lazily. The file name is the course id, and adding a file adds the course. Each file default-exports `Template[]`. |
+| `src/bank/kit.ts` | Authoring helpers: `tpl()`, compact params, prompt parsing; TeX helpers (`texPoly`, `texSum`, `tn`, `u`); numeric, statistics and matrix helpers; physical constants |
+| `src/lib/bank.ts` | Registry: finds `src/bank/courses/*.ts` itself; `ensureFor()`, `getTemplate()`, `templatesFor()`, legacy id aliases |
 | `src/lib/problems.ts` | Engine: formatting, `promptParts()`, value generation, `buildQuestions()`, `buildFrom()`, `makeChoices()`, `grade()`, `parseNumber()`, `workedSteps()`, `sampleSheet()` |
 | `src/lib/topics.ts` | Coverage and search: `isReady()`, `searchConcepts()`, `suggestionsFor()`, `suggestionsForQuery()` |
 | `src/lib/store.ts` | Flow and state: `loadSheet()` (**simulated scan**), `practiceTopics()`, `generate()`, `handIn()`, `fileResults()`, `openArchived()`, `ready()` (startup) |
 | `src/screens/topics.tsx` | Topics screen, course cards, concept rows, the shared `NotYet` panel |
-| `scripts/check-generator.mjs` | The bank's stress test (§4.7) |
+| `scripts/check-generator.mjs` · `scripts/sample-bank.mjs` | The bank's stress test (§4.7) · sample questions printed for review |
+| `docs/authoring.md` | **The full guide to writing templates**, detection fixtures and keywords |
 
 ### 4.3 The concept map and coverage
 
 - **Ids:** a concept id is `course.unit.concept`, e.g. `phys1.kin1d.freeFall`. A template id is `course.name`, e.g. `phys1.carAccel`. The prefix tells the registry which file to load.
-- **Ready means the course file exists.** A concept is *ready* when its course is registered in `LOADERS`. `check:generator` fails if any concept in a registered course has no templates, so "ready" never lies.
+- **Ready means the course file exists.** A concept is *ready* when its course has a file in `src/bank/courses/`. `check:generator` fails if any concept in a registered course has no templates, so "ready" never lies.
 - **Not-ready concepts are still known.** They appear in search and browse marked **Not yet**, and a sheet or pick that includes one keeps it, marked.
 - **The `NotYet` panel** names the concept and the course it's planned for, then offers the closest ready concepts: same unit, then same course, then shared keywords, then same subject.
 - **Order:** see §10 and `docs/curriculum.md`. Cooper's core first, then national popularity.
 
 ### 4.4 Writing templates (content rules)
+
+The full guide, with examples of every kind of template, is **[`docs/authoring.md`](docs/authoring.md)**. In short:
+
 
 **Every problem is original.**
 - Syllabi and textbooks decide *what* to cover and *how hard*, never the wording.
@@ -150,7 +155,7 @@ tpl({
   id: 'phys1.carAccel', concept: 'phys1.kin1d.constAccel', tier: 1, title: 'Car from rest',
   params: { v: [12, 36, 1, 'm/s'], t: [3, 9, 0.5, 's'] },        // [min, max, step, unit, { dp, int, fixed, nz }]
   prompt: 'A car speeds up from 0 to {v} in {t}. Find its acceleration.',   // {k} = value + unit; $…$ = TeX with \p{k}
-  answer: (v) => v.v / v.t, unit: 'm/s²',                       // `exact: true` for maths: whole numbers stay whole
+  answer: (v) => v.v / v.t, unit: 'm/s²',                       // `exact: true` for maths: 1/3, 8π/3, 12 shown exactly
   steps: (f, ans, v) => [{ tex: 'a = \\dfrac{\\Delta v}{\\Delta t}', note: '…' }, …],
   mistakes: (v) => [{ value: v.v * v.t, why: 'You multiplied…' }, …],   // feed distractors and feedback
   valid: (v) => …,                                              // optional constraint on values
@@ -169,11 +174,14 @@ tpl({
   - Plain, kind wording. Mistake feedback explains the physics, not the failure.
   - Keep numbers tidy: parameters positive, with signs written into the prompt.
   - Never a coefficient of 1 in maths prompts ("1t³"): start integer ranges at 2.
+- **Other kinds of template:**
+  - `derive`: extra values worked out from the drawn ones, including ready-made TeX, e.g. a polynomial with its signs right (`texPoly`).
+  - `pick`: worded "which one?" questions (converges or diverges, Lenz direction), always multiple choice, with feedback on each wrong option.
+  - `tol`: a wider tolerance for table-based answers (statistics).
 - **Adding a course:**
-  1. Create `src/bank/<course>.ts`.
-  2. Add a `LOADERS` line in `src/lib/bank.ts`.
-  3. Run `npm run check:generator`.
-  4. The course becomes "ready" in the app automatically.
+  1. Create `src/bank/courses/<course id>.ts` covering **every** concept of that course. A partial file would mark the whole course ready.
+  2. Run `COURSE=<id> npm run check:generator` and `COURSE=<id> npm run sample:bank`.
+  3. The course becomes "ready" in the app automatically.
 
 ### 4.5 Generation
 
@@ -184,7 +192,9 @@ tpl({
   - *Warm-up* uses coarser steps. *Challenge* widens ranges (×0.6–×1.5) and halves the step.
   - Draws are redone (up to 60 times) until they pass `valid()`, avoid zero where flagged, differ from the sheet's own numbers, and **no common mistake lands within 5% of the answer**. The last rule keeps every variant gradable.
 - **Display:**
-  - Physics answers show 3 significant figures; maths answers (`exact`) keep whole numbers whole.
+  - Physics answers show 3 significant figures.
+  - Maths answers (`exact`) show exactly: whole numbers, short decimals, fractions, and multiples of π or √n (`8π/3`, with "≈ 8.378" beside it in Results).
+  - Multiple-choice options share one format, so an exact right answer never stands out among decimals.
   - Very large or small values switch to scientific notation (1.67 × 10⁻⁷).
 - **Multiple choice:**
   - About one question in three, at random positions.
@@ -193,12 +203,16 @@ tpl({
 
 ### 4.6 Grading (`grade`)
 
-- **Correct:** within `max(1% of the answer, half a unit in the 3rd significant figure)`.
+- **Correct:**
+  - Physics: within `max(1% of the answer, half a unit in the 3rd significant figure)`.
+  - Maths (`exact`): whole-number answers must be exact; others to 3 significant figures (so `8pi/3`, `2.667` and `√3/2` all work).
+  - A template's `tol` widens either (statistics tables).
+- **Worded questions** (`pick`): the chosen option is right or wrong; each wrong option has its own feedback.
 - **Otherwise, checked in this order:**
   1. **Common mistake** (within 2%): that mistake's feedback, marked incorrect or partial.
   2. **Wrong sign:** incorrect, "Right size, wrong sign."
   3. **Wrong power of ten:** partial.
-  4. **Within 3%:** partial, "carry more digits".
+  4. **Within 3%:** partial, "carry more digits" (not for whole-number maths answers).
 - **Reading answers:** simple arithmetic (`27/5.5`, `π/4`, `2√3`, `3×10^8`), superscripts (`10⁻⁷`) and a decimal comma (`4,91`) all work. Anything after the value, like a unit, is ignored. Nothing is passed to `eval`.
 - **Blank:** skipped, not wrong.
 - **Points:** 4 correct, 2 partial. The score is points ÷ 4, out of the question count.
@@ -206,14 +220,14 @@ tpl({
 ### 4.7 Checks & debugging
 
 `npm run check:generator` loads every course file through Vite and fails (exit 1) on:
-- a formula that misses its `ref`
+- a formula (or worded `pick`) that misses its `ref`
 - a non-finite answer
 - a correct answer typed as displayed but marked wrong
-- multiple choice without 4 distinct options
-- unfilled or broken TeX
-- a concept with no templates
+- multiple choice without 4 distinct options, or worded questions without 2–4 distinct options
+- unfilled or broken TeX in prompts, options or steps
+- a concept with no templates, an unknown concept, a duplicate id, or a course file named for no course
 
-It also reports ambiguous variants. Use `SEEDS=400` for a longer run, or `COURSE=phys1` for one course.
+It also reports ambiguous variants. Use `SEEDS=400` for a longer run, or `COURSE=phys1` for one course. `COURSE=phys1 npm run sample:bank` prints sample prompts, answers, options and steps (`ID=`, `DIFF=harder`, `N=` narrow it).
 
 **Console debugging** (`npm run dev`):
 - Import modules by the URL the app actually uses. After a hot reload that URL carries a `?t=` query; otherwise you get a second, separate copy.
@@ -228,10 +242,9 @@ It also reports ambiguous variants. Use `SEEDS=400` for a longer run, or `COURSE
 | # | Issue | Suggested fix |
 |---|---|---|
 | 1 | **The significant-figures policy is undecided.** Physics answers always show 3 s.f. | Decide: match the least precise input, or keep 3 s.f. and say so in the UI |
-| 2 | **Maths prompts can't yet show derived values**, e.g. "x² − 9" when a = 3 | Add `derive: (v) => ({ s: v.a ** 2 })` to templates, with prompt support (Phase A) |
-| 3 | **Fractions show as decimals** (0.3333) in expected answers and steps | A fraction formatter for `exact` templates |
-| 4 | **No worded ("which one?") answers**, so conceptual questions such as Lenz direction or "does it converge?" are missing | A `choice` kind with text options (Phase A) |
-| 5 | **Scanning is simulated** | Phase B |
+| 2 | **One answer per question.** Vectors, matrices and multi-part answers can't be typed, so templates ask for one component, a magnitude or a determinant | A multi-field answer box, if students miss it |
+| 3 | **No symbolic answers.** "Find f′(x)" can't be graded, so templates ask for a value, such as f′(2) | Keep numeric; revisit only with a small expression checker |
+| 4 | **Scanning is simulated** | Phase B |
 
 ---
 
@@ -409,11 +422,7 @@ When a token changes, update Figma and `tokens.css` together.
 - Engineering sciences (thermodynamics, fluids, circuits).
 - Algebra-based physics variants.
 
-**Engine work that comes with the content:**
-- Derived values in prompts (§4.8 #2).
-- A fraction formatter (#3).
-- Worded-answer questions (#4).
-- Depth: about 3 templates per core concept.
+**Engine work for the content:** done in `437d395`: derived values in prompts, exact maths answers (fractions, π, roots), worded questions, and per-template tolerance. What's left is depth: about 3 templates per core concept.
 
 ### Phase B — Read real sheets, for free, in the browser
 
@@ -508,3 +517,4 @@ When a token changes, update Figma and `tokens.css` together.
 | 2026-09-28 | Honest coverage: the concept map lists every planned course (11 courses, 210 concepts). Topics without problems say "Not in Vriant yet" and suggest the closest ready ones. |
 | 2026-09-28 | Students can practice without a sheet: a Topics screen for searching in their own words or browsing by course; picked topics become a practice sheet. |
 | 2026-09-28 | Handoff revamped around the bank, coverage and the phased roadmap (§10). |
+| 2026-09-28 | Bank engine ready for every course: course files register themselves from `src/bank/courses/`; maths answers show and grade exactly (fractions, π, roots); prompts can use derived values; worded "which one?" questions; per-template tolerance. `docs/authoring.md` is the guide for writing banks. |
