@@ -1,149 +1,42 @@
 // Problem engine: templates → variants → grading.
 // Answers are always computed from the formula (never "generated"), so grading is exact.
+// The templates themselves live in the bank (src/bank), one lazily loaded file per course.
+import { getTemplate, templatesFor } from './bank';
 
 export type Difficulty = 'easier' | 'same' | 'harder';
+export type Tier = 1 | 2 | 3;
 export type Values = Record<string, number>;
-type Param = { min: number; max: number; step: number; dp: number; unit: string };
-type PromptToken = string | { k: string };
+/** `fixed` ranges ignore difficulty; `int` values stay whole; `nz` values are never 0. */
+export type Param = { min: number; max: number; step: number; dp: number; unit: string; fixed?: boolean; int?: boolean; nz?: boolean };
+/** Plain text, a value with its unit, or inline TeX (values written as \p{key}). */
+export type PromptToken = string | { k: string } | { tex: string };
 export type Step = { tex: string; note?: string };
-type Mistake = { value: number; why: string; partial?: boolean };
+export type Mistake = { value: number; why: string; partial?: boolean };
 
 export type Template = {
   id: string;
+  concept: string;
+  tier: Tier;
   title: string;
-  topic: string;
   params: Record<string, Param>;
   prompt: PromptToken[];
   answer: (v: Values) => number;
   unit: string;
+  /** Maths answers: whole numbers show as whole numbers, not "12.0". */
+  exact?: boolean;
   steps: (f: (k: string) => string, ans: string, v: Values) => Step[];
   mistakes: (v: Values) => Mistake[];
   valid?: (v: Values) => boolean;
   hint: string;
-};
-
-const G = 9.81;
-
-export const TEMPLATES: Record<string, Template> = {
-  carAccel: {
-    id: 'carAccel',
-    title: 'Car from rest',
-    topic: 'Kinematics',
-    params: {
-      v: { min: 12, max: 36, step: 1, dp: 0, unit: 'm/s' },
-      t: { min: 3, max: 9, step: 0.5, dp: 1, unit: 's' },
-    },
-    prompt: ['A car speeds up from 0 to ', { k: 'v' }, ' in ', { k: 't' }, '. Find its acceleration.'],
-    answer: (v) => v.v / v.t,
-    unit: 'm/s²',
-    steps: (f, ans) => [
-      { tex: 'a = \\dfrac{\\Delta v}{\\Delta t}', note: 'Acceleration is the change in velocity per second.' },
-      { tex: `a = \\dfrac{${f('v')} - 0}{${f('t')}}`, note: 'It starts from rest, so Δv is just the final speed.' },
-      { tex: `a = ${ans}\\ \\text{m/s}^2` },
-    ],
-    mistakes: (v) => [
-      { value: v.v * v.t, why: 'You multiplied speed by time. Acceleration divides the change in speed by the time taken.' },
-      { value: v.t / v.v, why: 'Flipped: it’s change in speed ÷ time, not time ÷ speed.' },
-      { value: v.v / (2 * v.t), why: 'No halving needed here — a = Δv ÷ Δt.' },
-    ],
-    hint: 'Acceleration = change in velocity ÷ time taken.',
-  },
-  droppedBall: {
-    id: 'droppedBall',
-    title: 'Dropped ball',
-    topic: 'Kinematics',
-    params: { h: { min: 5, max: 60, step: 1, dp: 0, unit: 'm' } },
-    prompt: ['A ball is dropped from a ', { k: 'h' }, ' ledge. How long does it take to reach the ground? Use g = 9.81 m/s².'],
-    answer: (v) => Math.sqrt((2 * v.h) / G),
-    unit: 's',
-    steps: (f, ans) => [
-      { tex: 'h = \\tfrac{1}{2}\\, g t^2', note: 'Dropped means it starts from rest.' },
-      { tex: `t = \\sqrt{\\dfrac{2h}{g}} = \\sqrt{\\dfrac{2 \\times ${f('h')}}{9.81}}`, note: 'Solve for t first, then substitute.' },
-      { tex: `t = ${ans}\\ \\text{s}` },
-    ],
-    mistakes: (v) => [
-      { value: Math.sqrt(v.h / G), why: 'Missing the 2 — from h = ½gt², t = √(2h/g).' },
-      { value: (2 * v.h) / G, why: 'Don’t forget the square root at the end.' },
-      { value: v.h / G, why: 'Solve h = ½gt² for t rather than dividing h by g.' },
-    ],
-    hint: 'Start from h = ½gt² and solve for t.',
-  },
-  cyclist: {
-    id: 'cyclist',
-    title: 'Cyclist from rest',
-    topic: 'Kinematics',
-    params: {
-      v: { min: 6, max: 16, step: 0.1, dp: 1, unit: 'm/s' },
-      t: { min: 3, max: 8, step: 0.5, dp: 1, unit: 's' },
-    },
-    prompt: ['A cyclist accelerates uniformly from rest to ', { k: 'v' }, ' in ', { k: 't' }, '. How far does she travel in that time?'],
-    answer: (v) => 0.5 * v.v * v.t,
-    unit: 'm',
-    steps: (f, ans) => [
-      { tex: '\\Delta x = \\tfrac{1}{2}(v_0 + v)\\,t', note: 'Acceleration is uniform, so use the average velocity.' },
-      { tex: `\\Delta x = \\tfrac{1}{2}(0 + ${f('v')})(${f('t')})`, note: 'Starts from rest: v₀ = 0.' },
-      { tex: `\\Delta x = ${ans}\\ \\text{m}` },
-    ],
-    mistakes: (v) => [
-      { value: v.v * v.t, why: 'You multiplied top speed by time. With uniform acceleration from rest, use the average speed — half the top speed.' },
-      { value: v.v / v.t, why: 'That’s the acceleration, not the distance.' },
-      { value: 0.25 * v.v * v.t, why: 'Halved twice — the average speed is ½ × top speed, once.' },
-    ],
-    hint: 'Average speed = ½ × (start speed + end speed).',
-  },
-  braking: {
-    id: 'braking',
-    title: 'Braking distance',
-    topic: 'Kinematics',
-    params: {
-      v: { min: 10, max: 32, step: 1, dp: 0, unit: 'm/s' },
-      a: { min: 3, max: 8, step: 0.5, dp: 1, unit: 'm/s²' },
-    },
-    prompt: ['A car travelling at ', { k: 'v' }, ' brakes with a constant deceleration of ', { k: 'a' }, '. How far does it travel before stopping?'],
-    answer: (v) => (v.v * v.v) / (2 * v.a),
-    unit: 'm',
-    steps: (f, ans) => [
-      { tex: 'v^2 = v_0^2 - 2ad', note: 'It stops, so the final speed v is 0.' },
-      { tex: `d = \\dfrac{v_0^2}{2a} = \\dfrac{${f('v')}^2}{2 \\times ${f('a')}}` },
-      { tex: `d = ${ans}\\ \\text{m}` },
-    ],
-    mistakes: (v) => [
-      { value: (v.v * v.v) / v.a, why: 'Missing the 2 — from v² = v₀² − 2ad, d = v₀² ÷ 2a.' },
-      { value: v.v / v.a, why: 'That’s the stopping time, not the distance.' },
-      { value: v.v / (2 * v.a), why: 'Square the speed: d = v₀² ÷ 2a.' },
-    ],
-    hint: 'Use v² = v₀² − 2ad with a final speed of 0.',
-  },
-  twoTrains: {
-    id: 'twoTrains',
-    title: 'Two trains',
-    topic: 'Kinematics',
-    params: {
-      d: { min: 20, max: 90, step: 5, dp: 0, unit: 'km' },
-      v1: { min: 60, max: 120, step: 5, dp: 0, unit: 'km/h' },
-      v2: { min: 60, max: 140, step: 5, dp: 0, unit: 'km/h' },
-    },
-    prompt: ['Two trains start ', { k: 'd' }, ' apart and head toward each other at ', { k: 'v1' }, ' and ', { k: 'v2' }, '. How many minutes until they meet?'],
-    answer: (v) => (v.d / (v.v1 + v.v2)) * 60,
-    unit: 'min',
-    valid: (v) => v.v1 !== v.v2,
-    steps: (f, ans, v) => [
-      { tex: 't = \\dfrac{d}{v_1 + v_2}', note: 'Moving toward each other, their speeds add.' },
-      { tex: `t = \\dfrac{${f('d')}}{${f('v1')} + ${f('v2')}} = ${fmtSig(v.d / (v.v1 + v.v2))}\\ \\text{h}` },
-      { tex: `t = ${ans}\\ \\text{min}`, note: 'Hours × 60 = minutes.' },
-    ],
-    mistakes: (v) => [
-      { value: (v.d / v.v1) * 60, why: 'Both trains move — use the closing speed, v₁ + v₂.' },
-      { value: (v.d / Math.abs(v.v1 - v.v2)) * 60, why: 'They head toward each other, so the speeds add rather than subtract.' },
-      { value: v.d / (v.v1 + v.v2), why: 'Right method — but that’s in hours. Convert to minutes.', partial: true },
-    ],
-    hint: 'When two things move toward each other, their speeds add.',
-  },
+  /** Hand-checked cases; `npm run check:generator` confirms the formula reproduces them. */
+  ref?: { v: Values; a: number }[];
 };
 
 // ——— Sheets ————————————————————————————————————————————————
 
-export type Problem = { n: number; page: number; templateId: string | null; values: Values; supported: boolean; text?: string; reason?: string };
+/** One problem found on a sheet. `concept` decides what gets practised; `templateId` is set only when the
+ *  problem is itself one of the bank's templates (the sample sheet), so its own numbers aren't reused. */
+export type Problem = { n: number; page: number; concept: string | null; templateId: string | null; values: Values; supported: boolean; text: string; reason?: string };
 export type Sheet = { id: string; title: string; course: string; fileName: string; pages: number; scannedAt: number; problems: Problem[]; source: 'sample' | 'upload' };
 
 export function sampleSheet(fileName = 'kinematics-ws4.pdf', source: Sheet['source'] = 'sample'): Sheet {
@@ -156,49 +49,85 @@ export function sampleSheet(fileName = 'kinematics-ws4.pdf', source: Sheet['sour
     scannedAt: Date.now(),
     source,
     problems: [
-      { n: 1, page: 1, templateId: 'carAccel', values: { v: 24, t: 6 }, supported: true },
-      { n: 2, page: 1, templateId: 'droppedBall', values: { h: 20 }, supported: true },
-      { n: 3, page: 1, templateId: 'cyclist', values: { v: 9, t: 4 }, supported: true },
-      { n: 4, page: 1, templateId: null, values: {}, supported: false, text: 'Sketch the v–t graph for the car in problem 1.', reason: 'sketch — not supported yet' },
-      { n: 5, page: 2, templateId: 'braking', values: { v: 18, a: 6 }, supported: true },
-      { n: 6, page: 2, templateId: 'twoTrains', values: { d: 30, v1: 80, v2: 100 }, supported: true },
+      { n: 1, page: 1, concept: 'phys1.kin1d.constAccel', templateId: 'phys1.carAccel', values: { v: 24, t: 6 }, supported: true, text: 'A car speeds up from 0 to 24 m/s in 6.0 s. Find its acceleration.' },
+      { n: 2, page: 1, concept: 'phys1.kin1d.freeFall', templateId: 'phys1.droppedBall', values: { h: 20 }, supported: true, text: 'A ball is dropped from a 20 m ledge. How long does it take to reach the ground? Use g = 9.81 m/s².' },
+      { n: 3, page: 1, concept: 'phys1.kin1d.constAccel', templateId: 'phys1.cyclist', values: { v: 9, t: 4 }, supported: true, text: 'A cyclist accelerates uniformly from rest to 9.0 m/s in 4.0 s. How far does she travel in that time?' },
+      { n: 4, page: 1, concept: null, templateId: null, values: {}, supported: false, text: 'Sketch the v–t graph for the car in problem 1.', reason: 'sketch — not supported yet' },
+      { n: 5, page: 2, concept: 'phys1.kin1d.constAccel', templateId: 'phys1.braking', values: { v: 18, a: 6 }, supported: true, text: 'A car travelling at 18 m/s brakes with a constant deceleration of 6.0 m/s². How far does it travel before stopping?' },
+      { n: 6, page: 2, concept: 'phys1.kin2d.relative', templateId: 'phys1.twoTrains', values: { d: 30, v1: 80, v2: 100 }, supported: true, text: 'Two trains start 30 km apart and head toward each other at 80 km/h and 100 km/h. How many minutes until they meet?' },
     ],
   };
 }
 
+export const problemText = (p: Problem) => p.text ?? '';
+
 // ——— Formatting ———————————————————————————————————————————————
 
-export function fmtSig(x: number, sig = 3): string {
+const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const sup = (e: number) => String(e).replace('-', '⁻').replace(/\d/g, (d) => SUP[+d]);
+
+/** Mantissa and exponent for scientific notation, after rounding to `sig` figures. */
+function sci(r: number, sig: number) {
+  let e = Math.floor(Math.log10(Math.abs(r)));
+  let m = (r / 10 ** e).toFixed(sig - 1);
+  if (Math.abs(Number(m)) >= 10) {
+    e += 1;
+    m = (r / 10 ** e).toFixed(sig - 1);
+  }
+  return { m, e };
+}
+
+/** `sig` significant figures; very large or very small values switch to scientific notation. */
+export function fmtSig(x: number, sig = 3, tex = false): string {
   if (!Number.isFinite(x)) return '—';
   if (x === 0) return '0';
   const r = Number(x.toPrecision(sig));
   const mag = Math.floor(Math.log10(Math.abs(r)));
+  if (mag >= 6 || mag <= -4) {
+    const { m, e } = sci(r, sig);
+    return tex ? `${m} \\times 10^{${e}}` : `${m} × 10${sup(e)}`;
+  }
   return r.toFixed(Math.max(0, sig - 1 - mag));
 }
 
-export const withUnit = (value: string, unit: string) => (unit === '°' ? `${value}°` : `${value} ${unit}`);
+function fmtExact(x: number, tex: boolean) {
+  const whole = Math.round(x);
+  if (Math.abs(x - whole) < 1e-9 && Math.abs(x) < 1e6) return String(whole === 0 ? 0 : whole);
+  const s = fmtSig(x, 4, tex);
+  return s.includes('10') && /[×\\]/.test(s) ? s : s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s;
+}
+
+/** How an answer is shown: 3 significant figures for physics, exact-looking numbers for maths. */
+export const fmtAnswer = (t: Template, x: number) => (t.exact ? fmtExact(x, false) : fmtSig(x));
+export const fmtAnswerTex = (t: Template, x: number) => (t.exact ? fmtExact(x, true) : fmtSig(x, 3, true));
+
+export const withUnit = (value: string, unit: string) => (!unit ? value : unit === '°' || unit === '%' ? `${value}${unit}` : `${value} ${unit}`);
 
 const decimals = (step: number) => {
   const s = String(step);
   const i = s.indexOf('.');
   return i < 0 ? 0 : s.length - i - 1;
 };
+const round6 = (x: number) => Math.round(x * 1e6) / 1e6;
 
-/** Text segments for a prompt; `changed` marks values that differ from the original problem. */
-export function promptParts(t: Template, values: Values, dps: Record<string, number>, changed: boolean) {
-  return t.prompt.map((tok) =>
-    typeof tok === 'string'
-      ? { text: tok, changed: false }
-      : { text: withUnit(values[tok.k].toFixed(dps[tok.k] ?? t.params[tok.k].dp), t.params[tok.k].unit), changed },
-  );
+export type PromptPart = { text: string; changed: boolean } | { tex: string; changed: false };
+
+/** Prompt segments; `changed` marks values that differ from the original problem. */
+export function promptParts(t: Template, values: Values, dps: Record<string, number>, changed: boolean): PromptPart[] {
+  const fmt = (k: string) => values[k].toFixed(dps[k] ?? t.params[k].dp);
+  return t.prompt.map((tok) => {
+    if (typeof tok === 'string') return { text: tok, changed: false };
+    if ('k' in tok) return { text: withUnit(fmt(tok.k), t.params[tok.k].unit), changed };
+    return { tex: tok.tex.replace(/\\p\{(\w+)\}/g, (_, k: string) => (changed ? `\\htmlClass{v}{${fmt(k)}}` : fmt(k))), changed: false };
+  });
 }
 
-export const originalDps = (t: Template) => Object.fromEntries(Object.entries(t.params).map(([k, p]) => [k, p.dp]));
-
-export function problemText(p: Problem): string {
-  if (!p.templateId) return p.text ?? '';
-  const t = TEMPLATES[p.templateId];
-  return promptParts(t, p.values, originalDps(t), false).map((s) => s.text).join('');
+/** A template's prompt as plain text with the given values (used for sheets saved before problems carried text). */
+export function promptText(t: Template, values: Values) {
+  const dps = Object.fromEntries(Object.entries(t.params).map(([k, p]) => [k, p.dp]));
+  return promptParts(t, values, dps, false)
+    .map((p) => ('tex' in p ? p.tex : p.text))
+    .join('');
 }
 
 // ——— Variants —————————————————————————————————————————————————
@@ -214,23 +143,52 @@ function mulberry32(seed: number) {
   };
 }
 
+function shuffle<T>(list: T[], rng: () => number): T[] {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/** True when a common mistake lands so close to the answer that grading couldn't tell them apart. */
+export function isAmbiguous(t: Template, values: Values) {
+  const a = t.answer(values);
+  if (!Number.isFinite(a)) return true;
+  return t.mistakes(values).some((m) => Number.isFinite(m.value) && Math.abs(m.value - a) <= Math.max(Math.abs(a) * 0.05, 1e-9));
+}
+
 function makeValues(t: Template, original: Values, diff: Difficulty, rng: () => number) {
   let last = { values: {} as Values, dps: {} as Record<string, number> };
-  for (let tries = 0; tries < 32; tries++) {
+  for (let tries = 0; tries < 60; tries++) {
     const values: Values = {};
     const dps: Record<string, number> = {};
     for (const [k, p] of Object.entries(t.params)) {
       let { min, max, step } = p;
-      if (diff === 'easier') step = step < 1 ? Math.min(1, step * 5) : step * 2;
-      if (diff === 'harder') { min *= 0.6; max *= 1.5; step /= 2; }
-      const first = Math.ceil(min / step) * step;
-      const n = Math.max(0, Math.floor((max - first) / step));
-      values[k] = Math.round((first + Math.floor(rng() * (n + 1)) * step) * 1e6) / 1e6;
-      dps[k] = Math.max(p.dp, decimals(step));
+      if (!p.fixed && diff === 'easier') step = p.int ? step * 2 : step < 1 ? Math.min(1, step * 5) : step * 2;
+      if (!p.fixed && diff === 'harder') {
+        if (min >= 0) {
+          min *= 0.6;
+          max *= 1.5;
+        } else {
+          const pad = (max - min) * 0.25;
+          min -= pad;
+          max += pad;
+        }
+        step = p.int ? Math.max(1, Math.round(step / 2)) : step / 2;
+      }
+      const first = Math.ceil(min / step - 1e-9) * step;
+      const n = Math.max(0, Math.floor((max - first) / step + 1e-9));
+      const x = round6(first + Math.floor(rng() * (n + 1)) * step);
+      values[k] = x;
+      // Show as many decimals as the value needs (never fewer than the template's), so "10.50" stays "10.5".
+      dps[k] = Math.max(p.dp, Math.min(decimals(step), decimals(x)));
     }
     last = { values, dps };
-    const differs = Object.keys(values).every((k) => Math.abs(values[k] - (original[k] ?? NaN)) > 1e-9);
-    if (differs && (t.valid ? t.valid(values) : true)) return last;
+    const nonzero = Object.entries(t.params).every(([k, p]) => !p.nz || values[k] !== 0);
+    const differs = Object.keys(values).every((k) => !(k in original) || Math.abs(values[k] - original[k]) > 1e-9);
+    if (nonzero && differs && (!t.valid || t.valid(values)) && !isAmbiguous(t, values)) return last;
   }
   return last;
 }
@@ -248,40 +206,75 @@ export type Question = {
   correct?: number;
 };
 
+/** Four options: the answer, the template's common mistakes, then simple scalings. Options are kept at least 4% apart. */
 function makeChoices(t: Template, values: Values, answer: number, rng: () => number) {
-  const far = (a: number, b: number) => Math.abs(a - b) > Math.abs(a) * 0.04;
+  const far = (a: number, b: number) => Math.abs(a - b) > Math.max(Math.abs(a), Math.abs(b)) * 0.04 && Math.abs(a - b) > 1e-9;
+  // Physical sizes stay positive; maths answers may take either sign.
+  const plausible = (c: number) => Number.isFinite(c) && (t.exact || answer <= 0 || c > 0);
   const opts = [answer];
-  const candidates = [...t.mistakes(values).map((m) => m.value), answer * 2, answer / 2, answer * 1.5, answer * 0.75, answer * 3];
+  const scaled = answer === 0 ? [1, -1, 2, 0.5] : [answer * 2, answer / 2, answer * 1.5, answer * 0.75, answer * 3];
+  const whole = t.exact && Number.isInteger(Math.round(answer * 1e9) / 1e9) ? [answer + 1, answer - 1, answer + 2] : [];
+  const candidates = [...t.mistakes(values).map((m) => m.value), ...(t.exact ? [-answer] : []), ...whole, ...scaled];
   for (const c of candidates) {
     if (opts.length >= 4) break;
-    if (Number.isFinite(c) && c > 0 && opts.every((o) => far(o, c))) opts.push(c);
+    if (plausible(c) && opts.every((o) => far(o, c))) opts.push(c);
   }
-  for (let i = opts.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [opts[i], opts[j]] = [opts[j], opts[i]];
-  }
-  return { choices: opts, correct: opts.indexOf(answer) };
+  for (let k = 5; opts.length < 4; k++) opts.push(answer === 0 ? k : answer * (1 + k * 0.25));
+  const order = shuffle(opts, rng);
+  return { choices: order, correct: order.indexOf(answer) };
 }
 
-function makeQuestion(p: Problem, i: number, seed: number, diff: Difficulty, rng: () => number, kind: Question['kind']): Question {
-  const t = TEMPLATES[p.templateId!];
-  const { values, dps } = makeValues(t, p.values, diff, rng);
+function makeQuestion(t: Template, problemN: number, i: number, seed: number, diff: Difficulty, rng: () => number, kind: Question['kind'], original: Values): Question {
+  const { values, dps } = makeValues(t, original, diff, rng);
   const answer = t.answer(values);
-  const q: Question = { id: `q${seed.toString(36)}-${i}`, n: i + 1, problemN: p.n, templateId: t.id, values, dps, kind, answer };
+  const q: Question = { id: `q${seed.toString(36)}-${i}`, n: i + 1, problemN, templateId: t.id, values, dps, kind, answer };
   return kind === 'choice' ? { ...q, ...makeChoices(t, values, answer, rng) } : q;
 }
 
-export function buildQuestions(problems: Problem[], selected: Record<number, boolean>, count: number, diff: Difficulty, seed: number): Question[] {
-  const pool = problems.filter((p) => p.supported && p.templateId && selected[p.n]);
-  if (!pool.length) return [];
-  const rng = mulberry32(seed);
-  // Every third question is multiple choice; the rest are typed.
-  return Array.from({ length: count }, (_, i) => makeQuestion(pool[i % pool.length], i, seed, diff, rng, i % 3 === 1 ? 'choice' : 'free'));
+/** Something to practise: a problem's concept (problemN 0 when a concept was picked without a sheet). */
+export type Slot = { problemN: number; concept: string; templateId?: string | null; values?: Values };
+
+const PREFER: Record<Difficulty, Tier[]> = { easier: [1, 2, 3], same: [2, 1, 3], harder: [3, 2, 1] };
+
+/** A template for the concept, favouring the chosen difficulty's tier and avoiding an immediate repeat. */
+function pickTemplate(concept: string, diff: Difficulty, rng: () => number, last: Map<string, string>) {
+  const all = templatesFor(concept);
+  const pool = all.length > 1 ? all.filter((t) => t.id !== last.get(concept)) : all;
+  const [first, second] = PREFER[diff];
+  const weight = (t: Template) => (t.tier === first ? 4 : t.tier === second ? 1.5 : 0.5);
+  let r = rng() * pool.reduce((s, t) => s + weight(t), 0);
+  for (const t of pool) {
+    r -= weight(t);
+    if (r <= 0) return t;
+  }
+  return pool[pool.length - 1];
 }
 
-export function buildFrom(problems: Problem[], seed: number, diff: Difficulty = 'same'): Question[] {
+export function buildQuestions(slots: Slot[], count: number, diff: Difficulty, seed: number): Question[] {
+  const usable = slots.filter((s) => templatesFor(s.concept).length);
+  if (!usable.length) return [];
   const rng = mulberry32(seed);
-  return problems.map((p, i) => makeQuestion(p, i, seed, diff, rng, 'free'));
+  // About one question in three is multiple choice, placed at random.
+  const kinds = shuffle(Array.from({ length: count }, (_, i): Question['kind'] => (i % 3 === 1 ? 'choice' : 'free')), rng);
+  const last = new Map<string, string>();
+  let round: Slot[] = [];
+  return Array.from({ length: count }, (_, i) => {
+    // Each round visits every selected problem once, in a fresh order.
+    if (!round.length) round = shuffle(usable, rng);
+    const slot = round.shift()!;
+    const t = pickTemplate(slot.concept, diff, rng, last);
+    last.set(slot.concept, t.id);
+    return makeQuestion(t, slot.problemN, i, seed, diff, rng, kinds[i], t.id === slot.templateId ? (slot.values ?? {}) : {});
+  });
+}
+
+/** One question from a specific template, for `npm run check:generator` and console debugging. */
+export const sampleQuestion = (t: Template, seed: number, diff: Difficulty, kind: Question['kind']) => makeQuestion(t, 0, 0, seed, diff, mulberry32(seed), kind, {});
+
+/** New numbers for the same templates (Try a similar one, Practice these again). */
+export function buildFrom(items: { templateId: string; problemN: number }[], seed: number, diff: Difficulty = 'same'): Question[] {
+  const rng = mulberry32(seed);
+  return items.map((it, i) => makeQuestion(getTemplate(it.templateId), it.problemN, i, seed, diff, rng, 'free', {}));
 }
 
 // ——— Grading ——————————————————————————————————————————————————
@@ -290,9 +283,107 @@ export type Result = 'correct' | 'partial' | 'incorrect' | 'skipped';
 export type Grade = { result: Result; points: number; feedback: string };
 export const POINTS = 4;
 
-export function parseNumber(s: string): number | null {
-  const m = s.replace(/[,\s]/g, '').replace(/[×x]10\^?/i, 'e').match(/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?/i);
-  return m ? parseFloat(m[0]) : null;
+/** Reads the answer a student typed: a number, or simple arithmetic (27/5.5, 3×10^8, π/4, 2√3).
+ *  Anything after the value, such as a unit, is ignored. Nothing is ever passed to eval. */
+export function parseNumber(raw: string): number | null {
+  const SUPS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+  let s = raw
+    .trim()
+    .replace(/[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, (m) => `^${m.replace('⁻', '-').replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (d) => String(SUPS.indexOf(d)))}`)
+    .replace(/[−–]/g, '-')
+    .replace(/[×·]/g, '*')
+    .replace(/÷/g, '/')
+    .replace(/\s+/g, '');
+  s = /^-?\d+,\d{1,2}(?!\d)/.test(s) && !/^-?\d+,\d{3}/.test(s) ? s.replace(',', '.') : s.replace(/,/g, '');
+  s = s.replace(/(\d)[xX](?=10\^)/g, '$1*').replace(/pi/gi, 'π').replace(/sqrt/gi, '√');
+  let i = 0;
+  const peek = () => s[i];
+  const num = (): number | null => {
+    const m = /^(\d+\.?\d*|\.\d+)(e[-+]?\d+)?/i.exec(s.slice(i));
+    if (!m) return null;
+    i += m[0].length;
+    return parseFloat(m[0]);
+  };
+  const primary = (): number | null => {
+    const c = peek();
+    if (c === '(') {
+      i++;
+      const v = expr();
+      if (peek() === ')') i++;
+      return v;
+    }
+    if (c === 'π') {
+      i++;
+      return Math.PI;
+    }
+    if (c === '√') {
+      i++;
+      const v = power();
+      return v === null ? null : Math.sqrt(v);
+    }
+    if (c === 'e' && !/\d/.test(s[i + 1] ?? '')) {
+      i++;
+      return Math.E;
+    }
+    return num();
+  };
+  const power = (): number | null => {
+    const base = primary();
+    if (base === null) return null;
+    if (peek() === '^') {
+      i++;
+      const e = unary();
+      return e === null ? base : base ** e;
+    }
+    return base;
+  };
+  const unary = (): number | null => {
+    if (peek() === '-' || peek() === '+') {
+      const neg = s[i++] === '-';
+      const v = unary();
+      return v === null ? null : neg ? -v : v;
+    }
+    return power();
+  };
+  const term = (): number | null => {
+    let v = unary();
+    if (v === null) return null;
+    for (;;) {
+      const c = peek();
+      if (c === '*' || c === '/') {
+        const at = i++;
+        const r = unary();
+        if (r === null) {
+          i = at;
+          break;
+        }
+        v = c === '*' ? v * r : v / r;
+      } else if (c === '(' || c === 'π' || c === '√') {
+        // Implicit multiplication: 2π, 3√2, 2(4).
+        const r = power();
+        if (r === null) break;
+        v *= r;
+      } else break;
+    }
+    return v;
+  };
+  function expr(): number | null {
+    let v = term();
+    if (v === null) return null;
+    while (peek() === '+' || peek() === '-') {
+      const at = i;
+      const neg = s[i++] === '-';
+      const r = term();
+      if (r === null) {
+        i = at;
+        break;
+      }
+      v = neg ? v - r : v + r;
+    }
+    return v;
+  }
+  const v = expr();
+  return v === null || !Number.isFinite(v) ? null : v;
 }
 
 function tolerance(ans: number) {
@@ -303,7 +394,7 @@ function tolerance(ans: number) {
 const G_CORRECT: Grade = { result: 'correct', points: POINTS, feedback: 'Correct.' };
 
 export function grade(q: Question, typed: string | undefined, chosen: number | undefined): Grade {
-  const t = TEMPLATES[q.templateId];
+  const t = getTemplate(q.templateId);
   const mistakes = t.mistakes(q.values);
   const tol = tolerance(q.answer);
   const matchMistake = (x: number) => mistakes.find((m) => Math.abs(x - m.value) <= Math.max(Math.abs(m.value) * 0.02, tol));
@@ -321,6 +412,7 @@ export function grade(q: Question, typed: string | undefined, chosen: number | u
   if (Math.abs(x - q.answer) <= tol) return G_CORRECT;
   const m = matchMistake(x);
   if (m) return { result: m.partial ? 'partial' : 'incorrect', points: m.partial ? POINTS / 2 : 0, feedback: m.why };
+  if (q.answer !== 0 && Math.abs(x + q.answer) <= tol) return { result: 'incorrect', points: 0, feedback: 'Right size, wrong sign — check which way it points, or which quantity is larger.' };
   for (const k of [-3, -2, -1, 1, 2, 3]) {
     const scaled = q.answer * 10 ** k;
     if (Math.abs(x - scaled) <= Math.abs(scaled) * 0.01) return { result: 'partial', points: POINTS / 2, feedback: 'Right digits, wrong power of ten — check your units and conversions.' };
@@ -330,7 +422,7 @@ export function grade(q: Question, typed: string | undefined, chosen: number | u
 }
 
 export function workedSteps(q: Question): Step[] {
-  const t = TEMPLATES[q.templateId];
+  const t = getTemplate(q.templateId);
   const f = (k: string) => q.values[k].toFixed(q.dps[k]);
-  return t.steps(f, fmtSig(q.answer), q.values);
+  return t.steps(f, fmtAnswerTex(t, q.answer), q.values);
 }

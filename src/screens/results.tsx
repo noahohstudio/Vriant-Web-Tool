@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { GradedAnswer, Prompt, WorkedSolution } from '../components/question';
 import { fmtTime, RailRow } from '../components/shell';
 import { Button, ClassTag, Icon, Mark, SectionLabel, Select, Tag } from '../components/ui';
-import { fmtSig, POINTS, TEMPLATES, withUnit, type Grade, type Question } from '../lib/problems';
+import { getTemplate } from '../lib/bank';
+import { fmtAnswer, POINTS, withUnit, type Grade, type Question } from '../lib/problems';
 import { fileResults, fmtScore, focusResult, go, practiceMissed, setActiveClass, trySimilar, useStore } from '../lib/store';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -10,19 +11,19 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 function ResultRow({ q, g, active }: { q: Question; g: Grade; active: boolean }) {
   const typed = useStore((s) => s.attempt?.answers[q.id] ?? '');
   const chosen = useStore((s) => s.attempt?.choices[q.id]);
-  const unit = TEMPLATES[q.templateId].unit;
+  const t = getTemplate(q.templateId);
   const detail =
     g.result === 'skipped'
       ? 'Skipped'
       : q.kind === 'choice'
         ? `You chose ${chosen !== undefined ? LETTERS[chosen] : '—'} · answer ${LETTERS[q.correct ?? 0]}`
-        : `You wrote ${typed.trim()} · expected ${withUnit(fmtSig(q.answer), unit)}`;
+        : `You wrote ${typed.trim()} · expected ${withUnit(fmtAnswer(t, q.answer), t.unit)}`;
   return (
     <button type="button" className={`result-row${active ? ' is-active' : ''}`} aria-current={active || undefined} onClick={() => focusResult(q.id)}>
       <Mark result={g.result} />
       <span className="result-row__text">
         <span className="t-label-m">
-          Q{q.n} · {TEMPLATES[q.templateId].title}
+          Q{q.n} · {t.title}
         </span>
         <span className="t-body-s c-tertiary">{detail}</span>
       </span>
@@ -165,7 +166,7 @@ export function ResultsMain() {
       <div className="split__rule" aria-hidden="true" />
 
       <section className="split__right detail" key={q.id}>
-        <SectionLabel index="06" title={`Q${q.n} · ${TEMPLATES[q.templateId].title}`} meta={`${g.points} / ${POINTS} pts`} />
+        <SectionLabel index="06" title={`Q${q.n} · ${getTemplate(q.templateId).title}`} meta={`${g.points} / ${POINTS} pts`} />
         <p className="t-body-m">
           <Prompt q={q} />
         </p>
@@ -196,7 +197,7 @@ export function ResultsRail() {
       <div className="rail-list">
         {test.questions.map((q) => {
           const g = results.grades[q.id];
-          return <RailRow key={q.id} mark={g.result} label={TEMPLATES[q.templateId].title} meta={`${g.points}/${POINTS}`} active={q.id === focus} onClick={() => focusResult(q.id)} />;
+          return <RailRow key={q.id} mark={g.result} label={getTemplate(q.templateId).title} meta={`${g.points}/${POINTS}`} active={q.id === focus} onClick={() => focusResult(q.id)} />;
         })}
       </div>
     </>

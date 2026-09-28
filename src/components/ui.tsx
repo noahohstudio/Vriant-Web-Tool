@@ -409,7 +409,14 @@ export const TeX = memo(function TeX({ tex, className = '' }: { tex: string; cla
   useEffect(() => {
     if (!ready) loadKatex().then(() => setReady(true));
   }, [ready]);
-  const html = useMemo(() => (ready && katexModule ? katexModule.default.renderToString(tex, { throwOnError: false, output: 'html' }) : ''), [ready, tex]);
+  // \htmlClass (only) is trusted so a changed value inside a formula can take the accent colour; the TeX comes from the bank, never from users.
+  const html = useMemo(
+    () =>
+      ready && katexModule
+        ? katexModule.default.renderToString(tex, { throwOnError: false, output: 'html', trust: (ctx) => ctx.command === '\\htmlClass', strict: (code: string) => (code === 'htmlExtension' ? 'ignore' : 'warn') })
+        : '',
+    [ready, tex],
+  );
   return html ? <span className={`tex ${className}`} dangerouslySetInnerHTML={{ __html: html }} /> : <span className={`tex tex--pending ${className}`} aria-busy="true" />;
 });
 

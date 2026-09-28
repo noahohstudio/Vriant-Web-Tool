@@ -2,7 +2,8 @@
 // Components subscribe to narrow slices, so typing an answer never re-renders the whole app.
 import { useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
-import { buildFrom, buildQuestions, grade, POINTS, sampleSheet, TEMPLATES, type Difficulty, type Grade, type Problem, type Question, type Result, type Sheet } from './problems';
+import { ensureFor, getTemplate, hasTemplate } from './bank';
+import { buildFrom, buildQuestions, grade, POINTS, promptText, sampleSheet, type Difficulty, type Grade, type Question, type Result, type Sheet, type Slot } from './problems';
 
 export type Route = 'intake' | 'review' | 'practice' | 'handin' | 'results' | 'archive';
 const ROUTES: Route[] = ['intake', 'review', 'practice', 'handin', 'results', 'archive'];
@@ -72,7 +73,9 @@ const SEED_ITEMS: ArchiveItem[] = [
   { id: 'seed-4', title: 'Limits — Warm-up', classId: 'calc-ab', detail: '6 problems', createdAt: NOW - 20 * DAY, tone: 'neutral', label: 'Not graded' },
   { id: 'seed-5', title: 'Stoichiometry — Worksheet 1', classId: 'chem', detail: '6 problems', createdAt: NOW - 11 * DAY, tone: 'correct', label: '6/6' },
 ];
-const DEFAULT_SETUP: Setup = { selected: { 1: true, 2: true, 3: true, 5: true }, count: 10, difficulty: 'same', timer: true };
+const DEFAULT_SETUP: Setup = { selected: {}, count: 10, difficulty: 'same', timer: true };
+/** Every problem we can practise starts selected. */
+const selectAll = (sheet: Sheet) => Object.fromEntries(sheet.problems.filter((p) => p.supported && p.concept).map((p) => [p.n, true]));
 
 const isTheme = (t: unknown): t is Theme => t === 'signature' || t === 'light' || t === 'dark';
 const routeFromHash = (): Route | null => {
@@ -211,7 +214,37 @@ export function loadSheet(upload: Upload | null) {
   const prev = state.upload?.url;
   if (prev && prev !== upload?.url) URL.revokeObjectURL(prev);
   const sheet = sampleSheet(upload?.name, upload ? 'upload' : 'sample');
-  go('review', (s) => ({ ...s, sheet, upload, page: 1, setup: { ...DEFAULT_SETUP, timer: s.setup.timer } }));
+  go('review', (s) => ({ ...s, sheet, upload, page: 1, setup: { ...DEFAULT_SETUP, selected: selectAll(sheet), timer: s.setup.timer } }));
+}
+
+/** Sheets saved before the bank existed name a template but not a concept or text; fill those in. */
+async function normalizeSheet(sheet: Sheet): Promise<Sheet> {
+  const legacy = sheet.problems.filter((p) => p.templateId && (!p.concept || !p.text));
+  if (!legacy.length) return sheet;
+  await ensureFor(legacy.map((p) => p.templateId!));
+  return {
+    ...sheet,
+    problems: sheet.problems.map((p) => {
+      if (!p.templateId || !hasTemplate(p.templateId)) return { ...p, concept: p.concept ?? null, text: p.text ?? '' };
+      const t = getTemplate(p.templateId);
+      return { ...p, templateId: t.id, concept: p.concept ?? t.concept, text: p.text || promptText(t, p.values) };
+    }),
+  };
+}
+
+/** Before the first render: load the course files the saved session needs, and upgrade an older saved sheet. */
+export async function ready() {
+  try {
+    await ensureFor(state.test?.questions.map((q) => q.templateId) ?? []);
+    if (state.sheet) {
+      const sheet = await normalizeSheet(state.sheet);
+      if (sheet !== state.sheet) set((s) => ({ ...s, sheet }));
+    }
+  } catch {
+    // Offline, or a course file failed to load: start at Intake rather than show a test we can't render.
+    set((s) => ({ ...s, route: 'intake', test: null, attempt: null, results: null, focus: null }));
+    history.replaceState(null, '', '#/intake');
+  }
 }
 export const setPage = (page: number) => set((s) => ({ ...s, page }));
 export const toggleProblem = (n: number) =>
@@ -232,10 +265,21 @@ function startTest(questions: Question[], title: string) {
   go('practice', (st) => ({ ...st, test, attempt: newAttempt(), results: null, focus: null }));
 }
 
-export function generate() {
+/** Build a test from the selected problems' concepts. Resolves false if the course files couldn't load. */
+export async function generate(): Promise<boolean> {
   const s = state;
-  if (!s.sheet) return;
-  startTest(buildQuestions(s.sheet.problems, s.setup.selected, s.setup.count, s.setup.difficulty, newSeed()), `${s.sheet.title} — practice`);
+  if (!s.sheet) return false;
+  const slots: Slot[] = s.sheet.problems
+    .filter((p) => p.supported && p.concept && s.setup.selected[p.n])
+    .map((p) => ({ problemN: p.n, concept: p.concept!, templateId: p.templateId, values: p.values }));
+  try {
+    await ensureFor(slots.map((x) => x.concept));
+  } catch {
+    toast('Couldn’t load the practice problems. Check your connection and try again.');
+    return false;
+  }
+  startTest(buildQuestions(slots, state.setup.count, state.setup.difficulty, newSeed()), `${s.sheet.title} — practice`);
+  return true;
 }
 
 // ——— Practice ———
@@ -276,20 +320,15 @@ export function handIn(via: Results['via']) {
 export const focusResult = (qid: string) => set((s) => ({ ...s, focus: qid }));
 
 export function trySimilar(qid: string) {
-  const { test, sheet } = state;
-  const q = test?.questions.find((x) => x.id === qid);
-  const p = q && sheet?.problems.find((x) => x.n === q.problemN);
-  if (q && p) startTest(buildFrom([p], newSeed(), state.setup.difficulty), `${TEMPLATES[q.templateId].title} — one more`);
+  const q = state.test?.questions.find((x) => x.id === qid);
+  if (q) startTest(buildFrom([{ templateId: q.templateId, problemN: q.problemN }], newSeed(), state.setup.difficulty), `${getTemplate(q.templateId).title} — one more`);
 }
 
 export function practiceMissed() {
   const { test, results, sheet } = state;
   if (!test || !results || !sheet) return;
-  const problems = test.questions
-    .filter((q) => results.grades[q.id].result !== 'correct')
-    .map((q) => sheet.problems.find((p) => p.n === q.problemN))
-    .filter((p): p is Problem => !!p);
-  startTest(buildFrom(problems, newSeed(), state.setup.difficulty), `${sheet.title} — the ones you missed`);
+  const missed = test.questions.filter((q) => results.grades[q.id].result !== 'correct').map((q) => ({ templateId: q.templateId, problemN: q.problemN }));
+  startTest(buildFrom(missed, newSeed(), state.setup.difficulty), `${sheet.title} — the ones you missed`);
 }
 
 export const fmtScore = (x: number) => (Number.isInteger(x) ? String(x) : x.toFixed(1));
@@ -332,18 +371,28 @@ export function fileResults(requested: string) {
 
 /** Reopen something from the archive: a filed test opens on Results; a source sheet opens in Review for a new test.
  *  Whatever was in progress is replaced, with Undo to get it back. */
-export function openArchived(id: string, mode: 'results' | 'newTest' = 'results') {
+export async function openArchived(id: string, mode: 'results' | 'newTest' = 'results') {
   const item = state.items.find((i) => i.id === id);
   const data = item?.data;
   if (!item || !data) return;
+  const asResults = mode === 'results' && data.test && data.attempt && data.results;
+  let sheet: Sheet;
+  try {
+    // The test's course file has to be loaded before its questions can render.
+    await ensureFor(asResults ? data.test!.questions.map((q) => q.templateId) : []);
+    sheet = await normalizeSheet(data.sheet);
+  } catch {
+    toast('Couldn’t load that sheet’s problems. Check your connection and try again.');
+    return;
+  }
   const prev = { route: state.route, sheet: state.sheet, upload: state.upload, page: state.page, setup: state.setup, test: state.test, attempt: state.attempt, results: state.results, focus: state.focus };
   const replacing = !!prev.test && prev.test.id !== data.test?.id;
-  if (mode === 'results' && data.test && data.attempt && data.results) {
-    const { test, attempt, results } = data;
+  if (asResults) {
+    const { test, attempt, results } = data as Required<typeof data>;
     const firstMiss = test.questions.find((q) => results.grades[q.id]?.result !== 'correct') ?? test.questions[0];
-    go('results', (s) => ({ ...s, sheet: data.sheet, upload: null, test, attempt, results: { ...results, filed: true, filedTo: item.classId }, focus: firstMiss.id }));
+    go('results', (s) => ({ ...s, sheet, upload: null, test, attempt, results: { ...results, filed: true, filedTo: item.classId }, focus: firstMiss.id }));
   } else {
-    go('review', (s) => ({ ...s, sheet: { ...data.sheet, scannedAt: Date.now() }, upload: null, page: 1, setup: { ...DEFAULT_SETUP, timer: s.setup.timer }, test: null, attempt: null, results: null, focus: null }));
+    go('review', (s) => ({ ...s, sheet: { ...sheet, scannedAt: Date.now() }, upload: null, page: 1, setup: { ...DEFAULT_SETUP, selected: selectAll(sheet), timer: s.setup.timer }, test: null, attempt: null, results: null, focus: null }));
   }
   if (replacing) {
     window.setTimeout(

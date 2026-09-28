@@ -574,6 +574,8 @@ select.field__input { cursor: pointer; }
 .qcard__prov { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .qcard__prompt { max-width: 656px; }
 .qcard__prompt .v, .detail .v { color: var(--accent-default); font-weight: 500; }
+/* Inline maths in a prompt: a touch smaller than KaTeX's default so it sits with Geist's larger x-height. */
+.qcard__prompt .katex, .detail .t-body-m .katex { font-size: 1.08em; }
 .qcard__hint { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: var(--radius-md); background: var(--bg-sunken); color: var(--text-secondary); }
 .qcard__hint svg { flex: none; margin-top: 2px; }
 .qcard__foot { display: flex; align-items: center; gap: 8px; padding: 16px 24px 16px 16px; border-top: 1px solid var(--line-divider); }

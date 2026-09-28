@@ -1,18 +1,22 @@
 import { memo, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { fmtSig, POINTS, promptParts, TEMPLATES, withUnit, workedSteps, type Grade, type Question } from '../lib/problems';
+import { unitLabel } from '../bank/taxonomy';
+import { getTemplate } from '../lib/bank';
+import { fmtAnswer, POINTS, promptParts, withUnit, workedSteps, type Grade, type Question } from '../lib/problems';
 import { answer, choose, nextQuestion, toggleFlag, useStore } from '../lib/store';
 import { Button, Icon, IconButton, Tag, TeX } from './ui';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 export const pad = (n: number) => String(n).padStart(2, '0');
 
-/** The prompt, with every value that changed from the original problem set in ink. */
+/** The prompt, with every value that changed from the original problem set in ink. Maths renders inline with KaTeX. */
 export const Prompt = memo(function Prompt({ q }: { q: Question }) {
-  const t = TEMPLATES[q.templateId];
+  const t = getTemplate(q.templateId);
   return (
     <>
       {promptParts(t, q.values, q.dps, true).map((p, i) =>
-        p.changed ? (
+        'tex' in p ? (
+          <TeX key={i} tex={p.tex} />
+        ) : p.changed ? (
           <span key={i} className="v">
             {p.text}
           </span>
@@ -49,20 +53,20 @@ function AnswerInput({ q }: { q: Question }) {
           }
         }}
       />
-      <span className="answer__unit">{TEMPLATES[q.templateId].unit}</span>
+      {getTemplate(q.templateId).unit && <span className="answer__unit">{getTemplate(q.templateId).unit}</span>}
     </label>
   );
 }
 
 function Choices({ q }: { q: Question }) {
   const chosen = useStore((s) => s.attempt?.choices[q.id]);
-  const unit = TEMPLATES[q.templateId].unit;
+  const t = getTemplate(q.templateId);
   return (
     <div className="choices" role="radiogroup" aria-label="Choices">
       {q.choices!.map((c, i) => (
         <button key={i} type="button" role="radio" aria-checked={chosen === i} className="choice" onClick={() => choose(q.id, i)}>
           <span className="choice__badge">{LETTERS[i]}</span>
-          <span className="choice__text">{withUnit(fmtSig(c), unit)}</span>
+          <span className="choice__text">{withUnit(fmtAnswer(t, c), t.unit)}</span>
         </button>
       ))}
     </div>
@@ -70,24 +74,26 @@ function Choices({ q }: { q: Question }) {
 }
 
 export function QuestionCard({ q, sheetTitle, hintOpen, onHint, isLast }: { q: Question; sheetTitle: string; hintOpen: boolean; onHint: () => void; isLast: boolean }) {
-  const t = TEMPLATES[q.templateId];
+  const t = getTemplate(q.templateId);
   const flagged = useStore((s) => !!s.attempt?.flagged[q.id]);
+  // "Variant" when this is the sheet problem itself with new numbers; "Practice" when it's another problem on the same concept.
+  const sameProblem = useStore((s) => s.sheet?.problems.find((p) => p.n === q.problemN)?.templateId === t.id);
   return (
     <article className="qcard" aria-label={`Question ${q.n}`}>
       <div className="qcard__body">
         <header className="qcard__head">
           <span className="t-mono-label c-tertiary">{pad(q.n)}</span>
-          <span className="t-mono-label c-secondary">{t.topic}</span>
+          <span className="t-mono-label c-secondary">{unitLabel(t.concept)}</span>
           <span className="qcard__rule" aria-hidden="true" />
           <span className="t-mono-s c-tertiary">{POINTS} pts</span>
           <IconButton icon="flag" size="s" label={flagged ? 'Unflag (F)' : 'Flag for review (F)'} pressed={flagged} onClick={() => toggleFlag(q.id)} />
         </header>
         <div className="qcard__prov">
           <Tag tone="highlight" icon="shuffle">
-            Variant
+            {sameProblem ? 'Variant' : 'Practice'}
           </Tag>
           <span className="t-body-s c-tertiary">
-            of problem {q.problemN} · {sheetTitle}
+            {q.problemN ? `${sameProblem ? 'of' : 'for'} problem ${q.problemN} · ${sheetTitle}` : sheetTitle}
           </span>
         </div>
         <p className="qcard__prompt t-body-l">
@@ -145,7 +151,8 @@ export function TestProgress({ questions, current, onPick, label, meta, grades }
 export function GradedAnswer({ q, g }: { q: Question; g: Grade }) {
   const typed = useStore((s) => s.attempt?.answers[q.id] ?? '');
   const chosen = useStore((s) => s.attempt?.choices[q.id]);
-  const unit = TEMPLATES[q.templateId].unit;
+  const t = getTemplate(q.templateId);
+  const unit = t.unit;
   if (q.kind === 'choice') {
     return (
       <div className="choices">
@@ -154,7 +161,7 @@ export function GradedAnswer({ q, g }: { q: Question; g: Grade }) {
           return (
             <div key={i} className={`choice choice--static${state ? ` choice--${state}` : ''}`}>
               <span className="choice__badge">{LETTERS[i]}</span>
-              <span className="choice__text">{withUnit(fmtSig(c), unit)}</span>
+              <span className="choice__text">{withUnit(fmtAnswer(t, c), unit)}</span>
               {state && <Icon name={state === 'correct' ? 'check' : 'close'} className={`c-${state}`} />}
             </div>
           );
@@ -168,8 +175,8 @@ export function GradedAnswer({ q, g }: { q: Question; g: Grade }) {
       <span className="answer__div" aria-hidden="true" />
       <span className="answer__value">{typed.trim() || '—'}</span>
       <span className="spacer" />
-      {g.result !== 'correct' && <span className="answer__expected">expected {fmtSig(q.answer)}</span>}
-      <span className="answer__unit">{unit}</span>
+      {g.result !== 'correct' && <span className="answer__expected">expected {fmtAnswer(t, q.answer)}</span>}
+      {unit && <span className="answer__unit">{unit}</span>}
       {g.result === 'partial' ? <span className="answer__half">½</span> : g.result !== 'skipped' && <Icon name={g.result === 'correct' ? 'check' : 'close'} className={`c-${g.result}`} />}
     </div>
   );

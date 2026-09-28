@@ -9,13 +9,53 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M3 17H17V3Z' fill='%231C1B19' stroke='%231C1B19' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <script>
       // Apply the saved theme before first paint so there is never a flash of the wrong theme.
+      // The loading screen shows once per session; reloads go straight to the app.
       try {
         var t = localStorage.getItem('vriant:theme');
         if (t === 'signature' || t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        if (sessionStorage.getItem('vriant:splash')) document.documentElement.classList.add('splash-seen');
       } catch (e) {}
     </script>
+    <style>
+      /* Loading screen. Inline, so it paints before any script or stylesheet loads; colours mirror tokens.css. */
+      .splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: #ece5d8; color: #1c1b19; --rule: rgba(28, 27, 25, 0.12); --node: rgba(28, 27, 25, 0.4); --sub: #6a604f; transition: opacity 320ms cubic-bezier(0.45, 0, 0.2, 1); }
+      html[data-theme='light'] .splash { background: #fbfaf8; --sub: #5d5a54; }
+      html[data-theme='dark'] .splash { background: #151413; color: #ece5d8; --rule: rgba(236, 229, 216, 0.1); --node: rgba(236, 229, 216, 0.4); --sub: #a09c94; }
+      html.splash-seen .splash { display: none; }
+      .splash.is-leaving { opacity: 0; pointer-events: none; }
+      .splash__inner { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+      .splash__brand, .splash__tag { opacity: 0; transform: translateY(4px); transition: opacity 280ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+      .splash__tag { transition-delay: 80ms; }
+      .splash.is-ready .splash__brand, .splash.is-ready .splash__tag { opacity: 1; transform: none; }
+      .splash__brand { display: flex; align-items: baseline; gap: 12px; }
+      .splash__mark { width: 27px; height: 27px; flex: none; }
+      .splash__word { font: 600 40px/1 'Geist Variable', 'Geist', ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.04em; }
+      .splash__tag { margin: 0; color: var(--sub); font: 400 15px/24px 'Geist Variable', 'Geist', ui-sans-serif, system-ui, sans-serif; }
+      /* A construction line with a node at each end; a graphite segment sweeps along it (transform only). */
+      .splash__line { position: relative; width: 208px; height: 11px; margin-top: 14px; }
+      .splash__line::before, .splash__line::after { content: ''; position: absolute; top: 0; width: 11px; height: 11px; background: linear-gradient(var(--node), var(--node)) center / 1px 100% no-repeat, linear-gradient(var(--node), var(--node)) center / 100% 1px no-repeat; }
+      .splash__line::before { left: 0; }
+      .splash__line::after { right: 0; }
+      .splash__rule { position: absolute; top: 5px; left: 5px; right: 5px; height: 1px; overflow: hidden; background: var(--rule); }
+      .splash__rule i { position: absolute; top: 0; left: 0; width: 36%; height: 1px; background: currentColor; transform: translateX(-100%); animation: splash-sweep 1.5s cubic-bezier(0.45, 0.05, 0.35, 1) infinite; }
+      @keyframes splash-sweep { to { transform: translateX(280%); } }
+      @media (prefers-reduced-motion: reduce) {
+        .splash__rule i { animation: none; transform: none; width: 100%; opacity: 0.35; }
+        .splash, .splash__brand, .splash__tag { transition: none; }
+      }
+    </style>
   </head>
   <body>
+    <div class="splash" id="splash" aria-hidden="true">
+      <div class="splash__inner">
+        <div class="splash__brand">
+          <svg class="splash__mark" viewBox="0 0 20 20"><path d="M3 17H17V3Z" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" /></svg>
+          <span class="splash__word">vriant</span>
+        </div>
+        <p class="splash__tag">Homework in, practice out.</p>
+        <div class="splash__line"><div class="splash__rule"><i></i></div></div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

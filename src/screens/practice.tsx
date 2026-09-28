@@ -3,7 +3,8 @@ import { Dropzone } from '../components/dropzone';
 import { pad, QuestionCard, TestProgress } from '../components/question';
 import { Elapsed, RailRow } from '../components/shell';
 import { Button, Icon, Kbd, loadKatex, SectionLabel } from '../components/ui';
-import { fmtSig, TEMPLATES, withUnit, type Question } from '../lib/problems';
+import { getTemplate } from '../lib/bank';
+import { fmtAnswer, withUnit, type Question } from '../lib/problems';
 import { choose, go, goQuestion, handIn, nextQuestion, toggleFlag, useStore, type Attempt } from '../lib/store';
 
 const isAnswered = (a: Attempt, id: string) => !!a.answers[id]?.trim() || a.choices[id] !== undefined;
@@ -70,7 +71,7 @@ export function PracticeMain() {
   );
 }
 
-const DIFFICULTY = { easier: 'Easier', same: 'As the original', harder: 'Harder' } as const;
+const DIFFICULTY = { easier: 'Warm-up', same: 'Standard', harder: 'Challenge' } as const;
 
 function PracticeAside() {
   const test = useStore((s) => s.test);
@@ -115,7 +116,7 @@ export function PracticeRail() {
   return (
     <>
       <SectionLabel index="01" title="Test" meta={String(test.questions.length)} />
-      <p className="t-body-s c-secondary">Variants of {test.sheetTitle}</p>
+      <p className="t-body-s c-secondary">Practice from {test.sheetTitle}</p>
       <div className="rail-list">
         {test.questions.map((q, i) => {
           const on = !handin && i === attempt.current;
@@ -125,7 +126,7 @@ export function PracticeRail() {
               key={q.id}
               index={pad(q.n)}
               dot={on ? 'var(--accent-default)' : done ? 'var(--text-primary)' : 'var(--line-strong)'}
-              label={TEMPLATES[q.templateId].title}
+              label={getTemplate(q.templateId).title}
               meta={attempt.flagged[q.id] ? 'flagged' : handin && !done ? 'blank' : undefined}
               metaTone={attempt.flagged[q.id] ? 'partial' : undefined}
               active={on}
@@ -168,13 +169,13 @@ export const PracticeStatus = () => <>saved in this tab until you archive it</>;
 
 // ——— 04 Hand in ———
 function AnswerPreview({ q, attempt }: { q: Question; attempt: Attempt }) {
-  const t = TEMPLATES[q.templateId];
+  const t = getTemplate(q.templateId);
   const chosen = attempt.choices[q.id];
   return (
     <div className="answer answer--static">
       <span className="answer__prefix">Q{q.n}</span>
       <span className="answer__div" aria-hidden="true" />
-      <span className="answer__value">{q.kind === 'choice' && chosen !== undefined ? withUnit(fmtSig(q.choices![chosen]), t.unit) : attempt.answers[q.id]}</span>
+      <span className="answer__value">{q.kind === 'choice' && chosen !== undefined ? withUnit(fmtAnswer(t, q.choices![chosen]), t.unit) : attempt.answers[q.id]}</span>
       <span className="spacer" />
       {q.kind === 'free' && <span className="answer__unit">{t.unit}</span>}
     </div>

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 
 const DIFFICULTY: { value: Difficulty; label: string; mark: string; hint: string }[] = [
-  { value: 'easier', label: 'Easier than the original', mark: 'Easier', hint: 'Rounder, friendlier numbers than your sheet.' },
-  { value: 'same', label: 'Same as the original', mark: 'Same', hint: 'New numbers in the same ranges as your sheet.' },
-  { value: 'harder', label: 'Harder than the original', mark: 'Harder', hint: 'Wider ranges and untidy numbers — more to keep track of.' },
+  { value: 'easier', label: 'Warm-up', mark: 'Warm-up', hint: 'One idea at a time, with rounder numbers.' },
+  { value: 'same', label: 'Standard', mark: 'Standard', hint: 'Typical homework: a step or two per problem.' },
+  { value: 'harder', label: 'Challenge', mark: 'Challenge', hint: 'Multi-step problems with untidier numbers.' },
 ];
 const MAX_TYPED = 30;
 
@@ -53,7 +53,8 @@ function QuestionCount({ value, onChange }: { value: number; onChange: (n: numbe
 import { Dropzone } from '../components/dropzone';
 import { countBy, fmtDate, fmtTime, RailRow } from '../components/shell';
 import { Button, Checkbox, ClassTag, Icon, SectionLabel, Segmented, Slider } from '../components/ui';
-import { problemText, TEMPLATES, type Difficulty, type Sheet } from '../lib/problems';
+import { conceptName } from '../bank/taxonomy';
+import { problemText, type Difficulty, type Sheet } from '../lib/problems';
 import { generate, go, loadSheet, openArchived, pickClassId, setActiveClass, setPage, setSetup, toggleProblem, useStore, type Upload } from '../lib/store';
 
 function onFile(file: File | null) {
@@ -182,7 +183,7 @@ export function ReviewMain() {
   const setup = useStore((s) => s.setup);
   const [busy, setBusy] = useState(false);
   if (!sheet) return null;
-  const picked = sheet.problems.filter((p) => p.supported && setup.selected[p.n]).length;
+  const picked = sheet.problems.filter((p) => p.supported && p.concept && setup.selected[p.n]).length;
   return (
     <div className="screen screen--split">
       <section className="split__left">
@@ -198,8 +199,8 @@ export function ReviewMain() {
         </div>
         <div className="stack-10">
           {sheet.problems.map((p) => (
-            <Checkbox key={p.n} checked={p.supported && !!setup.selected[p.n]} disabled={!p.supported} onChange={() => toggleProblem(p.n)}>
-              Q{p.n} · {p.templateId ? TEMPLATES[p.templateId].title : 'v–t sketch (not supported)'}
+            <Checkbox key={p.n} checked={p.supported && !!p.concept && !!setup.selected[p.n]} disabled={!p.supported || !p.concept} onChange={() => toggleProblem(p.n)}>
+              Q{p.n} · {p.concept ? conceptName(p.concept) : (p.reason ?? 'not supported yet')}
             </Checkbox>
           ))}
         </div>
@@ -243,7 +244,7 @@ export function ReviewMain() {
           disabled={!picked}
           onClick={() => {
             setBusy(true);
-            window.setTimeout(generate, 600);
+            window.setTimeout(() => void generate().then((ok) => ok || setBusy(false)), 600);
           }}
         >
           {busy ? 'Writing variants…' : 'Generate practice test'}
