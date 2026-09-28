@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CONCEPTS, COURSES, type Concept, type Course } from '../bank/taxonomy';
 import { plural, RailRow } from '../components/shell';
-import { Button, Checkbox, Icon, SectionLabel, Tag } from '../components/ui';
+import { Button, Checkbox, Icon, SectionLabel, Tag, usePresence } from '../components/ui';
 import { clearPicks, go, practiceTopics, togglePick, useStore } from '../lib/store';
 import { courseReady, isReady, readyCount, searchConcepts, suggestionsFor, suggestionsForQuery } from '../lib/topics';
 
@@ -35,6 +35,60 @@ export function NotYet({ concept, query, onPick }: { concept?: Concept; query?: 
             ))}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+/** Choose a detected problem's topic: the likeliest ones first, then a search over every concept. */
+export function TopicPicker({ current, candidates, onPick, label }: { current: string | null; candidates: string[]; onPick: (id: string) => void; label: string }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const presence = usePresence(open);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  const likely = candidates.map((id) => CONCEPTS.get(id)).filter((c): c is Concept => !!c);
+  const found = query.trim() ? searchConcepts(query).slice(0, 6).map((r) => r.concept) : [];
+  const list = query.trim() ? found : likely;
+  const choose = (id: string) => {
+    onPick(id);
+    setOpen(false);
+    setQuery('');
+  };
+  return (
+    <div className="menu-wrap" ref={ref}>
+      <Button variant="ghost" size="s" trailing="chevronDown" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {label}
+      </Button>
+      {presence.mounted && (
+        <div className={`menu picker${presence.closing ? ' is-closing' : ''}`} role="dialog" aria-label="Choose a topic">
+          <label className="field__box field__box--s picker__search">
+            <Icon name="search" size={16} className="c-tertiary" />
+            <input className="field__input" type="search" placeholder="Search all topics" aria-label="Search all topics" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
+          </label>
+          <p className="menu__note">{query.trim() ? (found.length ? 'Matches' : 'No matches') : likely.length ? 'Likely topics' : 'Type to search'}</p>
+          {list.map((c) => (
+            <button key={c.id} type="button" className={`menu__item picker__item${c.id === current ? ' is-current' : ''}`} onClick={() => choose(c.id)}>
+              <Icon name={c.id === current ? 'check' : isReady(c) ? 'plus' : 'minus'} size={16} />
+              <span className="picker__name">{c.name}</span>
+              <span className="picker__meta">{isReady(c) ? c.course.code : 'not yet'}</span>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

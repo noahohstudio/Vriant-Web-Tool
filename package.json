@@ -10,14 +10,17 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "check:generator": "node scripts/check-generator.mjs",
-    "sample:bank": "node scripts/sample-bank.mjs"
+    "sample:bank": "node scripts/sample-bank.mjs",
+    "check:detect": "node scripts/check-detect.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "katex": "^0.18.9",
+    "pdfjs-dist": "^6.3.289",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/katex": "^0.16.8",

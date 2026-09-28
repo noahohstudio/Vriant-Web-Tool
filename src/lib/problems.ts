@@ -47,8 +47,21 @@ export type Template = {
 
 /** One problem found on a sheet. `concept` decides what gets practised; `templateId` is set only when the
  *  problem is itself one of the bank's templates (the sample sheet), so its own numbers aren't reused. */
-export type Problem = { n: number; page: number; concept: string | null; templateId: string | null; values: Values; supported: boolean; text: string; reason?: string };
-export type Sheet = { id: string; title: string; course: string; fileName: string; pages: number; scannedAt: number; problems: Problem[]; source: 'sample' | 'upload' | 'topics' };
+export type Problem = {
+  n: number;
+  page: number;
+  concept: string | null;
+  templateId: string | null;
+  values: Values;
+  supported: boolean;
+  text: string;
+  reason?: string;
+  /** Detected sheets: the likeliest concepts, best first, and how sure the match is. */
+  candidates?: string[];
+  confidence?: 'strong' | 'weak' | 'none';
+};
+/** `via` says how an uploaded sheet was read: its PDF text layer, text recognition on an image, or plain text. */
+export type Sheet = { id: string; title: string; course: string; fileName: string; pages: number; scannedAt: number; problems: Problem[]; source: 'sample' | 'upload' | 'topics'; via?: 'pdf' | 'ocr' | 'text' };
 
 export function sampleSheet(fileName = 'kinematics-ws4.pdf', source: Sheet['source'] = 'sample'): Sheet {
   return {

@@ -23,7 +23,8 @@ export type Test = { id: string; title: string; sheetTitle: string; classId: str
 export type Attempt = { answers: Record<string, string>; choices: Record<string, number>; flagged: Record<string, boolean>; startedAt: number; current: number };
 export type Results = { grades: Record<string, Grade>; score: number; counts: Record<Result, number>; gradedAt: number; via: 'typed' | 'paper'; filed: boolean; filedTo?: string };
 export type Toast = { id: number; message: string; undo?: () => void };
-export type Upload = { name: string; url: string | null; kind: 'image' | 'pdf' | 'other' };
+/** The file behind a scanned sheet. `url` and `pages` (a picture of each page) only last for this visit. */
+export type Upload = { name: string; url: string | null; kind: 'image' | 'pdf' | 'other'; pages?: string[] };
 
 export type State = {
   route: Route;
@@ -78,8 +79,8 @@ const SEED_ITEMS: ArchiveItem[] = [
   { id: 'seed-5', title: 'Stoichiometry — Worksheet 1', classId: 'chem', detail: '6 problems', createdAt: NOW - 11 * DAY, tone: 'correct', label: '6/6' },
 ];
 const DEFAULT_SETUP: Setup = { selected: {}, count: 10, difficulty: 'same', timer: true };
-/** Every problem we can practise starts selected. */
-const selectAll = (sheet: Sheet) => Object.fromEntries(sheet.problems.filter((p) => p.supported && p.concept).map((p) => [p.n, true]));
+/** Problems that start ticked: everything we can practice, except detected problems whose topic is only a guess. */
+const selectAll = (sheet: Sheet) => Object.fromEntries(sheet.problems.filter((p) => p.supported && p.concept && p.confidence !== 'weak').map((p) => [p.n, true]));
 
 const isTheme = (t: unknown): t is Theme => t === 'signature' || t === 'light' || t === 'dark';
 const routeFromHash = (): Route | null => {
@@ -108,7 +109,7 @@ function initialState(): State {
     route: 'intake',
     theme,
     sheet: session?.sheet ?? null,
-    upload: session?.upload ? { ...session.upload, url: null } : null,
+    upload: session?.upload ? { ...session.upload, url: null, pages: undefined } : null,
     page: 1,
     setup: session?.setup ?? DEFAULT_SETUP,
     test: session?.test ?? null,
@@ -140,7 +141,7 @@ function set(update: (s: State) => State) {
 }
 function persist() {
   const { route, sheet, upload, setup, test, attempt, results, focus, picked, classes, items } = state;
-  write(() => sessionStorage, KEY.session, { route, sheet, upload: upload && { ...upload, url: null }, setup, test, attempt, results, focus, picked });
+  write(() => sessionStorage, KEY.session, { route, sheet, upload: upload && { ...upload, url: null, pages: undefined }, setup, test, attempt, results, focus, picked });
   write(() => localStorage, KEY.archive, { classes, items });
 }
 const subscribe = (l: () => void) => {
@@ -215,11 +216,57 @@ export function toast(message: string, undo?: () => void) {
 export const dismissToast = (id: number) => set((s) => (s.toast?.id === id ? { ...s, toast: null } : s));
 
 // ——— Intake & review ———
+/** Page pictures from the last upload are object URLs: free them when a new sheet replaces it. */
+function releaseUpload(next: Upload | null) {
+  const prev = state.upload;
+  if (!prev) return;
+  const keep = new Set([next?.url, ...(next?.pages ?? [])]);
+  for (const url of [prev.url, ...(prev.pages ?? [])]) if (url && !keep.has(url)) URL.revokeObjectURL(url);
+}
+
+/** The sample sheet (no upload), for trying Vriant without homework to hand. */
 export function loadSheet(upload: Upload | null) {
-  const prev = state.upload?.url;
-  if (prev && prev !== upload?.url) URL.revokeObjectURL(prev);
+  releaseUpload(upload);
   const sheet = sampleSheet(upload?.name, upload ? 'upload' : 'sample');
   go('review', (s) => ({ ...s, sheet, upload, page: 1, setup: { ...DEFAULT_SETUP, selected: selectAll(sheet), timer: s.setup.timer } }));
+}
+
+const pause = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+
+/** Read an uploaded sheet for real, on this device: its text (PDF, photo or text file) → problems → topics.
+ *  `report` narrates each stage. Throws a readable error when the file can't be read or has no problems. */
+export async function scanFile(file: File, report: (caption: string) => void) {
+  const began = performance.now();
+  const [{ readSheetFile, kindOf, ReadError }, { detectSheet, prepare }] = await Promise.all([import('./read'), import('./detect')]);
+  const read = await readSheetFile(file, report);
+  report('Matching each problem to a topic');
+  await prepare();
+  const sheet = detectSheet(read.pages, file.name, read.via);
+  if (!sheet.problems.length) {
+    read.images.forEach((u) => URL.revokeObjectURL(u));
+    throw new ReadError('empty', read.via === 'ocr' ? 'We couldn’t make out any problems in that picture. Try a flatter, brighter photo — or pick topics instead.' : 'We couldn’t find any problems in that file. Pick topics instead, or try another sheet.');
+  }
+  // Let the scan read as a scan, even when a text file takes a few milliseconds.
+  await pause(Math.max(0, 1200 - (performance.now() - began)));
+  const kind = kindOf(file);
+  const upload: Upload = { name: file.name, url: read.images[0] ?? null, kind: kind === 'image' ? 'image' : kind === 'pdf' ? 'pdf' : 'other', pages: read.images };
+  releaseUpload(upload);
+  go('review', (s) => ({ ...s, sheet, upload, page: 1, setup: { ...DEFAULT_SETUP, selected: selectAll(sheet), timer: s.setup.timer } }));
+}
+
+/** The student picks a problem's topic (a suggestion, or any concept): it counts as sure from then on. */
+export function setProblemConcept(n: number, conceptId: string) {
+  const c = CONCEPTS.get(conceptId);
+  if (!c || !state.sheet) return;
+  const ready = isReady(c);
+  set((s) => ({
+    ...s,
+    sheet: s.sheet && {
+      ...s.sheet,
+      problems: s.sheet.problems.map((p) => (p.n === n ? { ...p, concept: c.id, confidence: 'strong' as const, supported: ready, reason: ready ? undefined : 'not in Vriant yet' } : p)),
+    },
+    setup: { ...s.setup, selected: { ...s.setup.selected, [n]: ready } },
+  }));
 }
 
 /** Sheets saved before the bank existed name a template but not a concept or text; fill those in. */
@@ -282,8 +329,19 @@ export function practiceTopics(ids = state.picked) {
 const newAttempt = (): Attempt => ({ answers: {}, choices: {}, flagged: {}, startedAt: Date.now(), current: 0 });
 const newSeed = () => Math.floor(Math.random() * 2 ** 31);
 /** The class a sheet files into by default: matching name, then Physics 1, then whatever exists. */
-export const pickClassId = (classes: ClassItem[], course?: string) =>
-  classes.find((c) => c.name === course)?.id ?? classes.find((c) => c.id === 'physics-1')?.id ?? classes[0]?.id ?? UNSORTED;
+const SUBJECT_WORDS = ['physics', 'calculus', 'algebra', 'statistics', 'probability', 'differential', 'statics', 'mechanics', 'precalculus', 'chemistry'];
+/** The class a sheet files into by default: the same name, then a class sharing its subject ("Calculus I" → "Calculus AB"),
+ *  then Physics 1, then whatever exists. */
+export function pickClassId(classes: ClassItem[], course?: string) {
+  const words = SUBJECT_WORDS.filter((w) => course?.toLowerCase().includes(w));
+  return (
+    classes.find((c) => c.name === course)?.id ??
+    classes.find((c) => c.id !== UNSORTED && words.some((w) => c.name.toLowerCase().includes(w)))?.id ??
+    classes.find((c) => c.id === 'physics-1')?.id ??
+    classes[0]?.id ??
+    UNSORTED
+  );
+}
 const classIdFor = (s: State) => pickClassId(s.classes, s.sheet?.course);
 
 function startTest(questions: Question[], title: string) {

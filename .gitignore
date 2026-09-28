@@ -3,3 +3,6 @@ dist
 .DS_Store
 .claude/
 *.local
+
+# Real sheets for testing detection (never committed)
+scripts/fixtures/private/

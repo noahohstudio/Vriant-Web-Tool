@@ -227,7 +227,7 @@ export function HandInMain() {
             subtitle="Photo or PDF · we match each answer to its question"
             scanTitle="Reading your answers"
             phases={['Matching answers to questions', 'Checking units and significant figures', 'Marking your work']}
-            onFile={() => handIn('paper')}
+            onFile={() => new Promise<void>((done) => window.setTimeout(() => (handIn('paper'), done()), 1800))}
           />
           <p className="notice">
             <Icon name="scan" size={16} />

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { Button, Icon, Kbd } from './ui';
 
-type Phase = 'idle' | 'over' | 'scanning';
-const SCAN_MS = 1800;
+type Phase = 'idle' | 'over' | 'scanning' | 'failed';
+/** Stock captions advance on this timer until the reader reports what it's actually doing. */
+const STEP_MS = 600;
 
-/** The intake stage: drag & drop, file picker, camera or paste. Scanning is a compositor-only animation. */
-const SHEET_PHASES = ['Finding each problem on the page', 'Reading the numbers and units', 'Getting your variants ready'];
+/** The intake stage: drag & drop, file picker, camera or paste (a file, or text). Scanning is a compositor-only animation. */
+const SHEET_PHASES = ['Reading the text on each page', 'Finding each problem', 'Matching problems to topics'];
 
 export function Dropzone({
   title,
@@ -14,46 +15,73 @@ export function Dropzone({
   allowSample,
   scanTitle = 'Reading your sheet',
   phases = SHEET_PHASES,
+  accept = 'application/pdf,image/*,text/plain,.txt,.md',
+  fallback,
 }: {
   title: string;
   subtitle: string;
-  onFile: (file: File | null) => void;
+  /** Does the work; resolve when done (the screen usually changes), throw to show why it failed. */
+  onFile: (file: File | null, report: (caption: string) => void) => void | Promise<void>;
   allowSample?: boolean;
   scanTitle?: string;
   phases?: string[];
+  accept?: string;
+  /** Offered beside "Try another file" when reading fails. */
+  fallback?: { label: string; onClick: () => void };
 }) {
   const [phase, setPhase] = useState<Phase>('idle');
-  const [phase2, setPhase2] = useState(0);
+  const [caption, setCaption] = useState(phases[0]);
+  const [failure, setFailure] = useState('');
   const depth = useRef(0);
   const timers = useRef<number[]>([]);
+  const alive = useRef(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const camRef = useRef<HTMLInputElement>(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
-  const start = (file: File | null) => {
+  const start = async (file: File | null) => {
     if (phaseRef.current === 'scanning') return;
     depth.current = 0;
     setPhase('scanning');
-    setPhase2(0);
-    const step = SCAN_MS / phases.length;
-    timers.current = [...phases.slice(1).map((_, i) => window.setTimeout(() => setPhase2(i + 1), step * (i + 1))), window.setTimeout(() => onFile(file), SCAN_MS)];
+    setCaption(phases[0]);
+    let reported = false;
+    const report = (c: string) => {
+      reported = true;
+      if (alive.current) setCaption(c);
+    };
+    timers.current = phases.slice(1).map((p, i) => window.setTimeout(() => !reported && alive.current && setCaption(p), STEP_MS * (i + 1)));
+    try {
+      await onFile(file, report);
+      if (alive.current) setPhase('idle');
+    } catch (e) {
+      if (!alive.current) return;
+      setFailure(e instanceof Error && e.message ? e.message : 'Something went wrong reading that file.');
+      setPhase('failed');
+    } finally {
+      timers.current.forEach(clearTimeout);
+    }
   };
   const startRef = useRef(start);
   startRef.current = start;
   const pick = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (file) start(file);
+    if (file) void start(file);
   };
 
   useEffect(() => {
+    alive.current = true;
     const onPaste = (e: ClipboardEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea')) return;
       const file = Array.from(e.clipboardData?.files ?? [])[0];
-      if (file) startRef.current(file);
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      if (file) void startRef.current(file);
+      else if (text.trim().length >= 12) void startRef.current(new File([text], 'Pasted text.txt', { type: 'text/plain' }));
     };
     window.addEventListener('paste', onPaste);
     return () => {
+      alive.current = false;
       window.removeEventListener('paste', onPaste);
       timers.current.forEach(clearTimeout);
     };
@@ -63,7 +91,7 @@ export function Dropzone({
     onDragEnter: (e: DragEvent) => {
       e.preventDefault();
       depth.current++;
-      if (phaseRef.current !== 'scanning') setPhase('over');
+      if (phaseRef.current === 'idle' || phaseRef.current === 'failed') setPhase('over');
     },
     onDragOver: (e: DragEvent) => {
       e.preventDefault();
@@ -76,7 +104,7 @@ export function Dropzone({
     onDrop: (e: DragEvent) => {
       e.preventDefault();
       const file = e.dataTransfer.files[0];
-      if (file) start(file);
+      if (file) void start(file);
       else setPhase('idle');
     },
   };
@@ -100,19 +128,37 @@ export function Dropzone({
             <span className="dz-sheet__scan" />
           </div>
           <p className="t-heading-s">{scanTitle}…</p>
-          <p className="t-body-s c-tertiary dz-caption" key={phase2}>
-            {phases[phase2]}
+          <p className="t-body-s c-tertiary dz-caption" key={caption}>
+            {caption}
           </p>
-          <span className="dz-loader">
+          <span className="dz-loader dz-loader--live">
             <i />
           </span>
+        </div>
+      ) : phase === 'failed' ? (
+        <div className="dz-body" role="alert">
+          <span className="dz-disc">
+            <Icon name="hint" size={22} />
+          </span>
+          <p className="t-heading-m">We couldn’t read that one</p>
+          <p className="t-body-s c-secondary dz-failure">{failure}</p>
+          <div className="dz-actions">
+            <Button icon="upload" onClick={() => fileRef.current?.click()}>
+              Try another file
+            </Button>
+            {fallback && (
+              <Button variant="secondary" icon="search" onClick={fallback.onClick}>
+                {fallback.label}
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="dz-body">
           <span className="dz-disc">
             <Icon name={phase === 'over' ? 'upload' : 'scan'} size={22} />
           </span>
-          <p className="t-heading-m">{phase === 'over' ? 'Let go to scan it' : title}</p>
+          <p className="t-heading-m">{phase === 'over' ? 'Let go to read it' : title}</p>
           <p className="t-body-s c-tertiary">{subtitle}</p>
           <div className="dz-actions">
             <Button icon="upload" onClick={() => fileRef.current?.click()}>
@@ -123,12 +169,12 @@ export function Dropzone({
             </Button>
           </div>
           <p className="dz-hint t-mono-s c-tertiary">
-            or paste with <Kbd>⌘</Kbd>
+            or paste a file or text with <Kbd>⌘</Kbd>
             <Kbd>V</Kbd>
             {allowSample && (
               <>
                 {' · '}
-                <button type="button" className="link" onClick={() => start(null)}>
+                <button type="button" className="link" onClick={() => void start(null)}>
                   try the sample sheet
                 </button>
               </>
@@ -137,8 +183,7 @@ export function Dropzone({
         </div>
       )}
 
-
-      <input ref={fileRef} type="file" accept="application/pdf,image/*" hidden onChange={pick} />
+      <input ref={fileRef} type="file" accept={accept} hidden onChange={pick} />
       <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={pick} />
     </div>
   );

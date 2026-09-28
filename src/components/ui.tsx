@@ -421,7 +421,7 @@ export const TeX = memo(function TeX({ tex, className = '' }: { tex: string; cla
 });
 
 /** Keeps a popover mounted for a moment after it closes so it can animate out. */
-function usePresence(open: boolean, ms = 120) {
+export function usePresence(open: boolean, ms = 120) {
   const [mounted, setMounted] = useState(open);
   useEffect(() => {
     if (open) {
