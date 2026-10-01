@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `99511ce`
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `cce8df1`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -353,20 +353,20 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 - Contrast is AA for primary, secondary, accent, status and button text in all three themes. `text/tertiary` reaches UI-level contrast only.
 - **Oat was chosen** over Chalk & Ink, Sage & Pine and Legal pad (Figma board 05).
 
-**Type:** Geist for everything read or pressed, Geist Mono for annotations on rules. KaTeX renders the maths (inline in prompts at 1.08em). STIX Two Italic is only its Figma stand-in. Sentence case everywhere. 13px is the floor for text a student reads, and prompts are at most 680px wide.
+**Type:** Geist for everything read or pressed, captions included. Geist Mono only for small specs: dates, times, file names, keys. KaTeX renders the maths (inline in prompts at 1.08em). STIX Two Italic is only its Figma stand-in. Sentence case everywhere. 13px is the floor for text a student reads, and prompts are at most 680px wide.
 
 | Style | Spec | Use |
 |---|---|---|
 | Display/M · Heading/L · M · S | Geist SemiBold 48/52 · 32/38 · 24/30 · 18/24 | Titles |
 | Body/L · M · S | Geist Regular 18/28 · 15/24 · 13/20 | **Prompts** · reading · meta |
 | Label/M · S | Geist Medium 14/20 · 13/16 | Controls |
-| Mono/Label · Mono/S | Geist Mono 11/16 uppercase +6% · 12/16 | Section indices · specs, units |
+| Caption · Mono/S | Geist Medium 13/16, sentence case · Geist Mono 12/16 | Section labels, card labels, small headings · specs (dates, times, keys) |
 | Numeral/XL | Geist SemiBold 72/72, tabular | Scores |
 
 **Lines (the signature move):**
 - Rules follow real edges and run edge to edge.
 - An 11px cross marks every joint.
-- Section labels ride their rule.
+- Section labels ride their rule: a sentence-case caption, no index numbers, never all caps.
 - `line/rule` is 10–12% ink.
 - Graph paper appears only inside stages (the dropzone, figure wells).
 - Worked-solution steps sit on a rail of nodes.
@@ -492,6 +492,8 @@ When a token changes, update Figma and `tokens.css` together.
 
 **Figma is behind the code.**
 - It still shows:
+  - uppercase mono captions with section indices (01, 02…); the code now uses sentence-case Geist captions without numbers
+  - counts and points the code no longer shows (class counts, "4 pts", percentages)
   - the old Toggle and the native Select field
   - the theme switch showing its active label
   - stepped segments (5 / 10 / 15)
@@ -550,3 +552,4 @@ When a token changes, update Figma and `tokens.css` together.
 | 2026-09-28 | Sheets are read for real, on the device: PDF text (pdf.js), OCR for photos and scanned PDFs (Tesseract, engine from jsDelivr on first use), pasted text. Problems are matched to concepts by keywords plus similarity to the bank's templates; guesses are marked "Check" and every topic can be changed. |
 | 2026-09-30 | The live site is built by GitHub Actions and published to GitHub Pages. Pages had been serving the unbuilt source, so visitors were stuck on the loading screen. If the app can't start, the loading screen now says so and offers Reload. PDF pages render in one pass, so reading never stalls in a background tab. |
 | 2026-10-01 | Numbers only where they're used: the score, test progress, the question-count setting, the timer, answered-before-hand-in, the sheet's own problem numbers, dates and keys. Section indices (01, 02…), counts, points, percentages, page counters, course codes and the version number are gone. |
+| 2026-10-01 | Captions are sentence-case Geist Medium 13/16 on their rule, never all caps (option 2 of 3: chosen over quiet mono and a node heading). Geist Mono stays only for small specs. |
