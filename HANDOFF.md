@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `cce8df1`
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `584a89b`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -295,7 +295,7 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 |---|---|---|
 | 01 | [Intake](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1445) | Drop, choose, photograph or paste a sheet (a file or text), try the sample, or **Pick topics instead**. The rail shows recent sheets and classes. **Scan animation:** a graphite scanner head; captions follow the real stages ("Reading page 2 of 3", "Recognizing the text"); the loader sweeps until reading finishes. **Failed:** why, plus Try another file / Pick topics instead. |
 | 01b | Topics *(not in Figma yet)* | "What are you studying?" Search in your own words, or browse course cards and tick concepts. Concepts without problems are marked **Not yet**; **Similar** opens the `NotYet` panel with the closest ready topics. The rail lists picks, "Make a practice test", and coverage per course. |
-| 02 | [Review](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1505) | **From a scan:** "What we read" (the problems as text, with Detected Regions labelled by topic) or the **Original** page; a note says how it was read. The setup list names each problem's topic, marks guesses **Check**, and has a **Change**/**Choose** picker (likely topics, then search). Topics not in Vriant yet offer close ready ones. **From topics:** a topic list, where a not-yet topic can be swapped for a suggestion. **Setup:** Questions slider 1–12 (type up to 30), **Difficulty** Warm-up · Standard · Challenge, Time myself. |
+| 02 | [Review](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1505) | **From a scan:** "What we read" (the problems as text, with Detected Regions labelled by topic) or the **Original** page; a note says how it was read. The setup list names each problem's topic, marks guesses **Check**, and has a **Change**/**Choose** picker (likely topics, then search). Topics not in Vriant yet offer close ready ones. **From topics:** a topic list, where a not-yet topic can be swapped for a suggestion. **Setup:** Questions slider 1–12 (type up to 30), **Difficulty** Warm-up · Standard · Challenge, Time myself (starts Off). |
 | 03 | [Practice](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1565) | One card at a time, headed by the unit label (e.g. KINEMATICS). **Variant** tag when it's the sheet's own problem with new numbers; **Practice** when it's another problem on the same concept. Maths renders inline. Keyboard shortcuts; smooth hint. |
 | 04 | [Hand in](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1622) | **Typed** (instant) or **paper** (simulated). Blanks count as skipped. |
 | 05 | [Results](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=46-1678) | Score, to-review list, per-question detail: answer, expected value, feedback, worked solution. "Try a similar one" and "Practice these again". **Keep it?** files the test to a class. |
@@ -349,6 +349,7 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 - **Signature** (default): oat paper `#ECE5D8`, graphite ink `#1C1B19`, ballpoint blue `#3348D4`.
 - **Light:** paper white. **Dark:** graphite paper with oat ink.
 - **Accent never fills a button.** Scanning is monochrome; blue appears on drag-over, selection, focus, current, and changed values in a prompt.
+- **Setup controls are calm:** sliders use graphite (`text/secondary`) for the fill and knob ring, with faint 2px stops. Blue is only their keyboard focus ring.
 - **Status colours are always paired with a glyph** (✓ ½ ✕).
 - Contrast is AA for primary, secondary, accent, status and button text in all three themes. `text/tertiary` reaches UI-level contrast only.
 - **Oat was chosen** over Chalk & Ink, Sage & Pine and Legal pad (Figma board 05).
@@ -553,3 +554,4 @@ When a token changes, update Figma and `tokens.css` together.
 | 2026-09-30 | The live site is built by GitHub Actions and published to GitHub Pages. Pages had been serving the unbuilt source, so visitors were stuck on the loading screen. If the app can't start, the loading screen now says so and offers Reload. PDF pages render in one pass, so reading never stalls in a background tab. |
 | 2026-10-01 | Numbers only where they're used: the score, test progress, the question-count setting, the timer, answered-before-hand-in, the sheet's own problem numbers, dates and keys. Section indices (01, 02…), counts, points, percentages, page counters, course codes and the version number are gone. |
 | 2026-10-01 | Captions are sentence-case Geist Medium 13/16 on their rule, never all caps (option 2 of 3: chosen over quiet mono and a node heading). Geist Mono stays only for small specs. |
+| 2026-10-01 | Test setup calmed: sliders are graphite with faint stops (blue only for keyboard focus), and "Time myself" starts Off. |
