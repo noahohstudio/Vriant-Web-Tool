@@ -128,8 +128,12 @@ async function readPdf(file: File, report: (caption: string) => void): Promise<R
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(viewport.width);
     canvas.height = Math.ceil(viewport.height);
-    await page.render({ canvas, viewport }).promise;
-    canvases.push(canvas);
+    // "print" renders in one go instead of frame by frame, so it finishes even if the tab is in the background
+    // (browsers pause animation frames there). A page that still won't draw is read without its picture.
+    const render = page.render({ canvas, viewport, intent: 'print' });
+    const drawn = await Promise.race([render.promise.then(() => true), new Promise<boolean>((r) => window.setTimeout(() => r(false), 15000))]).catch(() => false);
+    if (drawn) canvases.push(canvas);
+    else render.cancel();
     page.cleanup();
   }
   await task.destroy();
@@ -137,6 +141,7 @@ async function readPdf(file: File, report: (caption: string) => void): Promise<R
   const chars = pages.join('').replace(/\s/g, '').length;
   // A scanned PDF has pictures of text but no text layer: recognize it instead.
   if (chars < 25 * count) {
+    if (!canvases.length) throw new ReadError('failed', 'That PDF has no text we can read, and its pages wouldn’t draw for text recognition.');
     const text = await recognize(canvases, report);
     return { pages: text, images, via: 'ocr' };
   }

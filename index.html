@@ -15,6 +15,28 @@
         if (t === 'signature' || t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
         if (sessionStorage.getItem('vriant:splash')) document.documentElement.classList.add('splash-seen');
       } catch (e) {}
+      // Never leave anyone on the loading screen: if the app can't start (its script fails to load, or nothing has
+      // started after 15 s), the loading screen says so and offers a reload. main.tsx clears this once it renders.
+      window.vriantFail = function (why) {
+        if (window.vriantStarted) return;
+        var el = document.getElementById('splash');
+        if (!el) return;
+        document.documentElement.classList.remove('splash-seen');
+        el.classList.add('is-ready', 'is-failed');
+        var msg = document.getElementById('splash-why');
+        if (msg && why) msg.textContent = why;
+      };
+      window.vriantBoot = setTimeout(function () {
+        window.vriantFail('It’s taking much longer than it should. Check your connection, then reload.');
+      }, 15000);
+      window.addEventListener(
+        'error',
+        function (e) {
+          var t = e.target;
+          if (t && t.tagName === 'SCRIPT') window.vriantFail('Part of Vriant didn’t download. Check your connection, then reload.');
+        },
+        true,
+      );
     </script>
     <style>
       /* Loading screen. Inline, so it paints before any script or stylesheet loads; colours mirror tokens.css. */
@@ -39,6 +61,17 @@
       .splash__rule { position: absolute; top: 5px; left: 5px; right: 5px; height: 1px; overflow: hidden; background: var(--rule); }
       .splash__rule i { position: absolute; top: 0; left: 0; width: 36%; height: 1px; background: currentColor; transform: translateX(-100%); animation: splash-sweep 1.5s cubic-bezier(0.45, 0.05, 0.35, 1) infinite; }
       @keyframes splash-sweep { to { transform: translateX(280%); } }
+      /* If the app can't start, the line stops and a short message with a reload takes the tagline's place. */
+      .splash__fail { display: none; flex-direction: column; align-items: center; gap: 14px; max-width: 320px; text-align: center; font: 400 15px/24px 'Geist Variable', 'Geist', ui-sans-serif, system-ui, sans-serif; }
+      .splash__fail p { margin: 0; }
+      .splash__fail p:first-child { font-weight: 600; }
+      .splash__fail p + p { color: var(--sub); }
+      .splash__fail button { height: 40px; margin-top: 6px; padding: 0 20px; border: 0; border-radius: 999px; background: #1c1b19; color: #ece5d8; font: 500 14px/20px 'Geist Variable', 'Geist', ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+      html[data-theme='light'] .splash__fail button { color: #fbfaf8; }
+      html[data-theme='dark'] .splash__fail button { background: #ece5d8; color: #151413; }
+      .splash__fail button:focus-visible { outline: 2px solid #3348d4; outline-offset: 2px; }
+      .splash.is-failed .splash__tag, .splash.is-failed .splash__line { display: none; }
+      .splash.is-failed .splash__fail { display: flex; }
       @media (prefers-reduced-motion: reduce) {
         .splash__rule i { animation: none; transform: none; width: 100%; opacity: 0.35; }
         .splash, .splash__brand, .splash__tag { transition: none; }
@@ -46,7 +79,7 @@
     </style>
   </head>
   <body>
-    <div class="splash" id="splash" aria-hidden="true">
+    <div class="splash" id="splash">
       <div class="splash__inner">
         <div class="splash__brand">
           <svg class="splash__mark" viewBox="0 0 20 20"><path d="M3 17H17V3Z" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" /></svg>
@@ -54,9 +87,17 @@
         </div>
         <p class="splash__tag">Homework in, practice out.</p>
         <div class="splash__line"><div class="splash__rule"><i></i></div></div>
+        <div class="splash__fail" role="alert">
+          <p>Vriant didn’t finish loading.</p>
+          <p id="splash-why">Check your connection, then reload.</p>
+          <button type="button" onclick="location.reload()">Reload</button>
+        </div>
       </div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script nomodule>
+      window.vriantFail('This browser is too old to run Vriant. Try a current Chrome, Safari, Firefox or Edge.');
+    </script>
   </body>
 </html>
