@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `a08d17e`
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `99511ce`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -549,3 +549,4 @@ When a token changes, update Figma and `tokens.css` together.
 | 2026-09-28 | Bank engine ready for every course: course files register themselves from `src/bank/courses/`; maths answers show and grade exactly (fractions, π, roots); prompts can use derived values; worded "which one?" questions; per-template tolerance. `docs/authoring.md` is the guide for writing banks. |
 | 2026-09-28 | Sheets are read for real, on the device: PDF text (pdf.js), OCR for photos and scanned PDFs (Tesseract, engine from jsDelivr on first use), pasted text. Problems are matched to concepts by keywords plus similarity to the bank's templates; guesses are marked "Check" and every topic can be changed. |
 | 2026-09-30 | The live site is built by GitHub Actions and published to GitHub Pages. Pages had been serving the unbuilt source, so visitors were stuck on the loading screen. If the app can't start, the loading screen now says so and offers Reload. PDF pages render in one pass, so reading never stalls in a background tab. |
+| 2026-10-01 | Numbers only where they're used: the score, test progress, the question-count setting, the timer, answered-before-hand-in, the sheet's own problem numbers, dates and keys. Section indices (01, 02…), counts, points, percentages, page counters, course codes and the version number are gone. |
