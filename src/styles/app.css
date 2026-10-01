@@ -421,9 +421,9 @@ button.rail-row:hover { background: var(--bg-tint); }
 
 .check { position: relative; display: inline-flex; align-items: center; gap: 12px; font: 400 15px/24px var(--font-sans); cursor: pointer; }
 .check input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
-.check__box { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: var(--radius-xs); background: var(--bg-surface); box-shadow: inset 0 0 0 1.5px var(--line-node); color: var(--text-on-accent); transition: background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.check__box { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: var(--radius-xs); background: var(--bg-surface); box-shadow: inset 0 0 0 1.5px var(--line-node); color: var(--bg-raised); transition: background-color var(--dur-fast), box-shadow var(--dur-fast); }
 .check__box svg { stroke-width: 2; opacity: 0; transform: scale(0.6); transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
-.check input:checked + .check__box { background: var(--accent-default); box-shadow: none; }
+.check input:checked + .check__box { background: var(--text-secondary); box-shadow: none; }
 .check input:checked + .check__box svg { opacity: 1; transform: none; }
 .check input:focus-visible + .check__box { box-shadow: var(--focus-shadow); }
 .check.is-disabled { cursor: default; color: var(--text-tertiary); }
