@@ -32,7 +32,7 @@ export default function App() {
         <Main />
       </main>
       <footer className="footer">
-        <span>vriant v0.1 · nothing is kept unless you archive it</span>
+        <span>vriant · nothing is kept unless you archive it</span>
         <span>
           <Status />
         </span>

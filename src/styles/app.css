@@ -263,7 +263,6 @@ button.rail-row:hover { background: var(--bg-tint); }
 .detail > * { animation: rise 0.28s var(--ease-out) backwards; }
 
 .section-label { display: flex; align-items: center; gap: 12px; min-height: 16px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
-.section-label__idx { color: var(--text-tertiary); }
 .section-label__title { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .section-label__rule { flex: 1; min-width: 24px; height: 1px; background: var(--line-rule); }
 .section-label__meta { font: 400 12px/16px var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--text-tertiary); white-space: nowrap; }
@@ -528,7 +527,6 @@ select.field__input { cursor: pointer; }
 .paper__text b { font-weight: 600; }
 .paper__lines { display: flex; flex-direction: column; gap: 22px; padding-top: 16px; }
 .paper__lines i { display: block; height: 1px; background: var(--line-divider); }
-.paper__foot { padding-top: 12px; text-align: center; }
 .region { position: relative; display: flex; flex-direction: column; margin: 0 -16px; padding: 14px 16px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background-color var(--dur-base); }
 .region__corners { position: absolute; inset: 0; pointer-events: none; }
 .region::before, .region::after, .region__corners::before, .region__corners::after { content: ''; position: absolute; width: 14px; height: 14px; border: 2px solid var(--accent-default); transition: opacity var(--dur-base); }

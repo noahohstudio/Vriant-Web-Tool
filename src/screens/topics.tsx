@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CONCEPTS, COURSES, type Concept, type Course } from '../bank/taxonomy';
-import { plural, RailRow } from '../components/shell';
+import { RailRow } from '../components/shell';
 import { Button, Checkbox, Icon, SectionLabel, Tag, usePresence } from '../components/ui';
 import { clearPicks, go, practiceTopics, togglePick, useStore } from '../lib/store';
-import { courseReady, isReady, readyCount, searchConcepts, suggestionsFor, suggestionsForQuery } from '../lib/topics';
+import { courseReady, isReady, searchConcepts, suggestionsFor, suggestionsForQuery } from '../lib/topics';
 
 /** Shown wherever a concept has no practice problems yet: says so plainly and offers the closest ready ones. */
 export function NotYet({ concept, query, onPick }: { concept?: Concept; query?: string; onPick: (id: string) => void }) {
@@ -85,7 +85,7 @@ export function TopicPicker({ current, candidates, onPick, label }: { current: s
             <button key={c.id} type="button" className={`menu__item picker__item${c.id === current ? ' is-current' : ''}`} onClick={() => choose(c.id)}>
               <Icon name={c.id === current ? 'check' : isReady(c) ? 'plus' : 'minus'} size={16} />
               <span className="picker__name">{c.name}</span>
-              <span className="picker__meta">{isReady(c) ? c.course.code : 'not yet'}</span>
+              <span className="picker__meta">{isReady(c) ? c.course.name.split(':')[0] : 'not yet'}</span>
             </button>
           ))}
         </div>
@@ -109,7 +109,7 @@ function ConceptRow({ c, open, onToggleOpen }: { c: Concept; open: boolean; onTo
         )}
         <span className="spacer" />
         <span className="t-body-s c-tertiary topic-row__meta">
-          {c.course.code} · {c.unit.label}
+          {c.course.name.split(':')[0]} · {c.unit.label}
         </span>
         {!ready && (
           <>
@@ -146,11 +146,10 @@ function CourseGrid({ onOpen }: { onOpen: (id: string) => void }) {
         const here = concepts.filter((k) => picked.includes(k.id)).length;
         return (
           <button key={c.id} type="button" className={`course-card${courseReady(c) ? '' : ' is-off'}`} onClick={() => onOpen(c.id)}>
-            <span className="t-mono-label c-tertiary">{c.code}</span>
             <span className="t-heading-s">{c.name}</span>
             <span className="course-card__meta t-body-s">
-              {plural(concepts.length, 'concept')} · {courseReady(c) ? 'ready' : 'not in Vriant yet'}
-              {here ? ` · ${here} picked` : ''}
+              {courseReady(c) ? 'Ready' : 'Not in Vriant yet'}
+              {here ? ' · some picked' : ''}
             </span>
           </button>
         );
@@ -168,7 +167,7 @@ function CourseTopics({ course, onBack }: { course: Course; onBack: () => void }
           All courses
         </Button>
       </div>
-      <SectionLabel index={course.code} title={course.name} meta={ready ? plural(course.units.reduce((n, u) => n + u.concepts.length, 0), 'concept') : 'not in Vriant yet'} />
+      <SectionLabel title={course.name} meta={ready ? undefined : 'not in Vriant yet'} />
       {!ready && <p className="t-body-s c-secondary measure">This course’s practice problems haven’t been written yet. Here’s what it will cover — open any topic to see similar ones you can practice now.</p>}
       {course.units.map((u) => (
         <section key={u.id}>
@@ -191,7 +190,7 @@ function SearchResults({ query }: { query: string }) {
       {!readyStrong.length && (strong[0] ? <NotYet concept={strong[0].concept} onPick={togglePick} /> : <NotYet query={query} onPick={togglePick} />)}
       {(strong.length ? strong : results).length > 0 && (
         <>
-          <SectionLabel index="02" title={strong.length ? 'Matches' : 'Partial matches'} meta={String(Math.min(24, (strong.length ? strong : results).length))} />
+          <SectionLabel title={strong.length ? 'Matches' : 'Partial matches'} />
           <ConceptList concepts={(strong.length ? strong : results).slice(0, 24).map((r) => r.concept)} />
         </>
       )}
@@ -206,7 +205,7 @@ export function TopicsMain() {
   const open = COURSES.find((c) => c.id === course);
   return (
     <div className="screen">
-      <SectionLabel index="01" title="Topics" meta={`${readyCount()} of ${CONCEPTS.size} concepts ready`} />
+      <SectionLabel title="Topics" />
       <div className="stack-12">
         <h1 className="t-heading-l">What are you studying?</h1>
         <p className="t-body-l c-secondary measure">Search for a concept in your own words, or browse by course. Pick a few, then make a practice test.</p>
@@ -231,12 +230,12 @@ export function TopicsRail() {
   const ready = concepts.filter(isReady);
   return (
     <>
-      <SectionLabel index="01" title="Picked" meta={String(concepts.length)} />
+      <SectionLabel title="Picked" />
       {concepts.length ? (
         <>
           <div className="rail-list">
             {concepts.map((c) => (
-              <RailRow key={c.id} dot={isReady(c) ? 'var(--accent-default)' : 'var(--line-strong)'} label={c.name} meta={isReady(c) ? c.course.code : 'not yet'} muted={!isReady(c)} onClick={() => togglePick(c.id)} />
+              <RailRow key={c.id} dot={isReady(c) ? 'var(--accent-default)' : 'var(--line-strong)'} label={c.name} meta={isReady(c) ? undefined : 'not yet'} muted={!isReady(c)} onClick={() => togglePick(c.id)} />
             ))}
           </div>
           <p className="t-body-s c-tertiary rail-note">Click a topic to remove it.</p>
@@ -254,7 +253,7 @@ export function TopicsRail() {
           </Button>
         )}
       </div>
-      <SectionLabel index="02" title="Coverage" meta={`${readyCount()} / ${CONCEPTS.size}`} />
+      <SectionLabel title="Coverage" />
       <div className="rail-list">
         {COURSES.map((c) => (
           <RailRow key={c.id} dot={courseReady(c) ? 'var(--status-correct)' : 'var(--line-strong)'} label={c.name} meta={courseReady(c) ? 'ready' : 'later'} muted={!courseReady(c)} />
@@ -268,7 +267,7 @@ export function TopicsStatus() {
   const picked = useStore((s) => s.picked.length);
   return (
     <>
-      {plural(picked, 'topic')} picked · {readyCount()} of {CONCEPTS.size} concepts have practice problems
+      {picked ? 'topics picked' : 'nothing picked yet'} · courses marked “not yet” are still being written
     </>
   );
 }

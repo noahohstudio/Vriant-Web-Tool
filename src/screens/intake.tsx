@@ -51,7 +51,7 @@ function QuestionCount({ value, onChange }: { value: number; onChange: (n: numbe
   );
 }
 import { Dropzone } from '../components/dropzone';
-import { countBy, fmtDate, fmtTime, plural, RailRow } from '../components/shell';
+import { fmtDate, fmtTime, plural, RailRow } from '../components/shell';
 import { Button, Checkbox, ClassTag, Icon, SectionLabel, Segmented, Slider, Tag } from '../components/ui';
 import { CONCEPTS, conceptName } from '../bank/taxonomy';
 import { problemText, type Difficulty, type Problem, type Sheet } from '../lib/problems';
@@ -69,7 +69,7 @@ function onFile(file: File | null, report: (caption: string) => void) {
 export function IntakeMain() {
   return (
     <div className="screen">
-      <SectionLabel index="01" title="Intake" meta="Step 1 of 4" />
+      <SectionLabel title="Intake" />
       <div className="stack-12">
         <h1 className="t-display-m">Drop in this week’s sheet.</h1>
         <p className="t-body-l c-secondary measure">We’ll find the problems, write new versions with different numbers, and grade them when you hand the test back.</p>
@@ -96,7 +96,6 @@ export function IntakeRail() {
   const items = useStore((s) => s.items);
   const classes = useStore((s) => s.classes);
   const recent = useMemo(() => [...items].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3), [items]);
-  const counts = useMemo(() => countBy(items), [items]);
   const hueOf = (id: string) => `var(--tag-${classes.find((c) => c.id === id)?.hue ?? 'slate'})`;
   const open = (classId: string) => {
     setActiveClass(classId);
@@ -104,16 +103,16 @@ export function IntakeRail() {
   };
   return (
     <>
-      <SectionLabel index="01" title="Recent" meta={String(recent.length)} />
+      <SectionLabel title="Recent" />
       <div className="rail-list">
         {recent.map((i) => (
           <RailRow key={i.id} dot={hueOf(i.classId)} label={i.title} meta={fmtDate(i.createdAt)} onClick={() => (i.data ? openArchived(i.id, i.data.test ? 'results' : 'newTest') : open(i.classId))} />
         ))}
       </div>
-      <SectionLabel index="02" title="Classes" meta={String(classes.length)} />
+      <SectionLabel title="Classes" />
       <div className="rail-list">
         {classes.map((c) => (
-          <RailRow key={c.id} dot={`var(--tag-${c.hue})`} label={c.name} meta={String(counts[c.id] ?? 0)} onClick={() => open(c.id)} />
+          <RailRow key={c.id} dot={`var(--tag-${c.hue})`} label={c.name} onClick={() => open(c.id)} />
         ))}
       </div>
     </>
@@ -164,9 +163,6 @@ function Paper({ sheet, page, selected }: { sheet: Sheet; page: number; selected
         })}
       </div>
       {!problems.length && <p className="t-body-s c-tertiary">No problems start on this page.</p>}
-      <footer className="paper__foot t-mono-s c-tertiary">
-        page {page} of {sheet.pages}
-      </footer>
     </div>
   );
 }
@@ -264,7 +260,7 @@ function TopicSheet({ sheet }: { sheet: Sheet }) {
                 <span className="topic-row__name">{c.name}</span>
                 <span className="spacer" />
                 <span className="t-body-s c-tertiary topic-row__meta">
-                  {c.course.code} · {c.unit.label}
+                  {c.course.name.split(':')[0]} · {c.unit.label}
                 </span>
                 {!p.supported && <Tag tone="neutral">Not yet</Tag>}
               </div>
@@ -293,12 +289,11 @@ export function ReviewMain() {
   const topics = sheet.source === 'topics';
   const scanned = !!sheet.via;
   const hasOriginal = !!(upload?.pages?.length || upload?.url);
-  const n = sheet.problems.length;
   const picked = sheet.problems.filter((p) => p.supported && p.concept && setup.selected[p.n]).length;
   return (
     <div className="screen screen--split">
       <section className="split__left">
-        <SectionLabel index="02" title={topics ? 'Topics' : 'Detected'} meta={topics ? plural(n, 'topic') : `${n} problems · page ${page} of ${sheet.pages}`} />
+        <SectionLabel title={topics ? 'Topics' : 'Detected'} />
         {scanned && hasOriginal && (
           <Segmented
             label="Show"
@@ -328,9 +323,9 @@ export function ReviewMain() {
       </section>
       <div className="split__rule" aria-hidden="true" />
       <section className="split__right">
-        <SectionLabel index="03" title="Make a test" />
+        <SectionLabel title="Make a test" />
         <div className="stack-6">
-          <h2 className="t-heading-s">{topics ? `${plural(n, 'topic')} to practice` : `We found ${n} problems`}</h2>
+          <h2 className="t-heading-s">{topics ? 'Topics to practice' : 'Here’s what we found'}</h2>
           <p className="t-body-s c-secondary">
             {topics ? 'Untick any you want to leave out.' : scanned ? 'Pick what goes into the test. “Check” marks a topic we’re not sure of — change it if it’s wrong.' : 'Pick what goes into the test. Sketches and proofs aren’t supported yet.'}
           </p>
@@ -397,9 +392,6 @@ export function ReviewMain() {
         >
           {busy ? 'Writing variants…' : 'Generate practice test'}
         </Button>
-        <p className="t-mono-s c-tertiary">
-          {picked} problems · {setup.count} questions · about {Math.round(setup.count * 1.5)} minutes
-        </p>
       </section>
     </div>
   );
@@ -415,7 +407,7 @@ export function ReviewRail() {
   if (sheet.source === 'topics') {
     return (
       <>
-        <SectionLabel index="01" title="Topics" meta={String(sheet.problems.length)} />
+        <SectionLabel title="Topics" />
         <div className="rail-list">
           {sheet.problems.map((p) => (
             <RailRow key={p.n} dot={p.supported ? 'var(--accent-default)' : 'var(--line-strong)'} label={conceptName(p.concept)} meta={p.supported ? undefined : 'not yet'} muted={!p.supported} />
@@ -430,13 +422,13 @@ export function ReviewRail() {
   }
   return (
     <>
-      <SectionLabel index="01" title="Sheet" />
+      <SectionLabel title="Sheet" />
       <div className="rail-file">
         <Icon name="sheet" />
         <div>
           <p className="t-label-s">{sheet.fileName}</p>
           <p className="t-mono-s c-tertiary">
-            {plural(sheet.pages, 'page')} · {sheet.via === 'ocr' ? 'text recognized' : sheet.via ? 'read' : 'scanned'} {fmtTime(sheet.scannedAt)}
+            {sheet.via === 'ocr' ? 'Text recognized' : sheet.via ? 'Read' : 'Scanned'} {fmtTime(sheet.scannedAt)}
           </p>
         </div>
       </div>
@@ -444,7 +436,7 @@ export function ReviewRail() {
         <span className="t-label-s c-secondary">Save to</span>
         <ClassTag hue={cls.hue}>{cls.name}</ClassTag>
       </div>
-      <SectionLabel index="02" title="Pages" meta={String(sheet.pages)} />
+      <SectionLabel title="Pages" />
       <div className="thumbs">
         {Array.from({ length: sheet.pages }, (_, i) => i + 1).map((n) => (
           <button key={n} type="button" className={`thumb${n === page ? ' is-active' : ''}`} aria-label={`Page ${n}`} aria-current={n === page || undefined} onClick={() => setPage(n)}>
@@ -459,7 +451,6 @@ export function ReviewRail() {
                 <i />
               </span>
             )}
-            <span className="t-mono-s">{n}</span>
           </button>
         ))}
       </div>
@@ -470,5 +461,5 @@ export function ReviewRail() {
 export function ReviewStatus() {
   const sheet = useStore((s) => s.sheet);
   if (sheet?.source === 'topics') return <>{plural(sheet.problems.length, 'topic')} picked</>;
-  return <>{sheet ? `${sheet.fileName} · ${plural(sheet.pages, 'page')}${sheet.via ? ' · read on this device' : ''}` : ''}</>;
+  return <>{sheet ? `${sheet.fileName}${sheet.via ? ' · read on this device' : ''}` : ''}</>;
 }

@@ -101,10 +101,9 @@ export function IconButton({ icon, label, variant = 'ghost', size = 'm', pressed
 }
 
 // ——— Labels & tags ———
-export function SectionLabel({ index, title, meta }: { index: string; title: string; meta?: ReactNode }) {
+export function SectionLabel({ title, meta }: { title: string; meta?: ReactNode }) {
   return (
     <div className="section-label">
-      <span className="section-label__idx">{index}</span>
       <span className="section-label__title">{title}</span>
       <span className="section-label__rule" aria-hidden="true" />
       {meta !== undefined && <span className="section-label__meta">{meta}</span>}

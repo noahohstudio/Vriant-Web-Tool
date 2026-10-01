@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Dropzone } from '../components/dropzone';
-import { optionCount, pad, QuestionCard, Rich, TestProgress } from '../components/question';
+import { optionCount, QuestionCard, Rich, TestProgress } from '../components/question';
 import { Elapsed, RailRow } from '../components/shell';
 import { Button, Icon, Kbd, loadKatex, SectionLabel } from '../components/ui';
 import { getTemplate } from '../lib/bank';
@@ -48,7 +48,7 @@ export function PracticeMain() {
   const n = test.questions.length;
   return (
     <div className="screen">
-      <SectionLabel index="02" title="Practice" meta={`Question ${current + 1} of ${n}`} />
+      <SectionLabel title="Practice" />
       <TestProgress
         questions={test.questions}
         current={current}
@@ -115,7 +115,7 @@ export function PracticeRail() {
   const handin = route === 'handin';
   return (
     <>
-      <SectionLabel index="01" title="Test" meta={String(test.questions.length)} />
+      <SectionLabel title="Test" />
       <p className="t-body-s c-secondary">Practice from {test.sheetTitle}</p>
       <div className="rail-list">
         {test.questions.map((q, i) => {
@@ -124,7 +124,6 @@ export function PracticeRail() {
           return (
             <RailRow
               key={q.id}
-              index={pad(q.n)}
               dot={on ? 'var(--accent-default)' : done ? 'var(--text-primary)' : 'var(--line-strong)'}
               label={getTemplate(q.templateId).title}
               meta={attempt.flagged[q.id] ? 'flagged' : handin && !done ? 'blank' : undefined}
@@ -141,7 +140,7 @@ export function PracticeRail() {
       </div>
       {!handin && (
         <>
-          <SectionLabel index="02" title="Keys" />
+          <SectionLabel title="Keys" />
           <ul className="keys">
             <li>
               <Kbd>Enter</Kbd>Next question
@@ -193,7 +192,7 @@ export function HandInMain() {
   const summary = [answered.length > 3 ? `+ ${answered.length - 3} more` : '', blank ? `${blank} blank` : '', flagged ? `${flagged} flagged` : ''].filter(Boolean).join(' · ');
   return (
     <div className="screen">
-      <SectionLabel index="03" title="Hand in" meta={`${answered.length} of ${n} answered`} />
+      <SectionLabel title="Hand in" meta={`${answered.length} of ${n} answered`} />
       <div className="stack-12">
         <h1 className="t-heading-l">How should we grade it?</h1>
         <p className="t-body-m c-secondary measure">Typed answers are graded instantly. Worked it out on paper? Scan it and we’ll read your working the same way we read your homework.</p>
@@ -251,7 +250,7 @@ export function HandInStatus() {
   if (!test || !attempt) return null;
   return (
     <>
-      {test.questions.filter((q) => isAnswered(attempt, q.id)).length} of {test.questions.length} answered
+      nothing is graded until you hand in
     </>
   );
 }

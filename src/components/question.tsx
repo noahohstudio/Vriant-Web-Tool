@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { unitLabel } from '../bank/taxonomy';
 import { getTemplate } from '../lib/bank';
-import { choiceText, fmtAnswer, fmtApprox, POINTS, promptParts, richParts, workedSteps, type Grade, type Question } from '../lib/problems';
+import { choiceText, fmtAnswer, fmtApprox, promptParts, richParts, workedSteps, type Grade, type Question } from '../lib/problems';
 import { answer, choose, nextQuestion, toggleFlag, useStore } from '../lib/store';
 import { Button, Icon, IconButton, Tag, TeX } from './ui';
 
@@ -96,10 +96,8 @@ export function QuestionCard({ q, sheetTitle, hintOpen, onHint, isLast }: { q: Q
     <article className="qcard" aria-label={`Question ${q.n}`}>
       <div className="qcard__body">
         <header className="qcard__head">
-          <span className="t-mono-label c-tertiary">{pad(q.n)}</span>
           <span className="t-mono-label c-secondary">{unitLabel(t.concept)}</span>
           <span className="qcard__rule" aria-hidden="true" />
-          <span className="t-mono-s c-tertiary">{POINTS} pts</span>
           <IconButton icon="flag" size="s" label={flagged ? 'Unflag (F)' : 'Flag for review (F)'} pressed={flagged} onClick={() => toggleFlag(q.id)} />
         </header>
         <div className="qcard__prov">

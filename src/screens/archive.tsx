@@ -262,7 +262,7 @@ function SheetRow({ item }: { item: ArchiveItem }) {
         <span className="sheet-row__meta">
           {cls && <ClassTag hue={cls.hue}>{cls.name}</ClassTag>}
           <span className="t-body-s c-tertiary">
-            {item.detail} · {fmtDate(item.createdAt)}
+            {fmtDate(item.createdAt)}
           </span>
         </span>
       </span>
@@ -299,7 +299,7 @@ export function ArchiveMain() {
 
   return (
     <div className="screen">
-      <SectionLabel index="02" title="Archive" meta={plural(items.length, 'sheet')} />
+      <SectionLabel title="Archive" />
       <div className="toolbar">
         <label className="field__box search">
           <Icon name="search" size={16} className="c-tertiary" />
@@ -331,7 +331,7 @@ export function ArchiveMain() {
         ))}
         <NewClassTile />
       </div>
-      <SectionLabel index="03" title={query ? 'Search' : (cls?.name ?? 'Archive')} meta={plural(list.length, 'sheet')} />
+      <SectionLabel title={query ? 'Search' : (cls?.name ?? 'Archive')} />
       {list.length ? (
         <ul className="rows">
           {list.map((i) => (
@@ -361,7 +361,7 @@ function RailClass({ cls, count, active }: { cls: ClassItem; count: number; acti
   }
   return (
     <div className="rail-item">
-      <RailRow dot={`var(--tag-${cls.hue})`} label={cls.name} meta={String(count)} active={active} onClick={() => setActiveClass(cls.id)} />
+      <RailRow dot={`var(--tag-${cls.hue})`} label={cls.name} active={active} onClick={() => setActiveClass(cls.id)} />
       <div className="rail-item__menu">
         <ClassMenu cls={cls} count={count} onRename={() => setEditing(true)} />
       </div>
@@ -377,7 +377,7 @@ export function ArchiveRail() {
   const [adding, setAdding] = useState(false);
   return (
     <>
-      <SectionLabel index="01" title="Classes" meta={String(classes.length)} />
+      <SectionLabel title="Classes" />
       <div className="rail-list">
         {classes.map((c) => (
           <RailClass key={c.id} cls={c} count={counts[c.id] ?? 0} active={c.id === activeClass} />
@@ -403,11 +403,9 @@ export function ArchiveRail() {
 }
 
 export function ArchiveStatus() {
-  const items = useStore((s) => s.items);
-  const classes = useStore((s) => s.classes);
   return (
     <>
-      {plural(items.length, 'sheet')} · {classes.length} {classes.length === 1 ? 'class' : 'classes'} · stored on this device
+      stored on this device
     </>
   );
 }

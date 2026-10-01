@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { GradedAnswer, Prompt, WorkedSolution } from '../components/question';
 import { fmtTime, RailRow } from '../components/shell';
-import { Button, ClassTag, Icon, Mark, SectionLabel, Select, Tag } from '../components/ui';
+import { Button, ClassTag, Icon, Mark, SectionLabel, Select } from '../components/ui';
 import { getTemplate } from '../lib/bank';
-import { fmtAnswer, POINTS, withUnit, type Grade, type Question } from '../lib/problems';
+import { fmtAnswer, withUnit, type Grade, type Question } from '../lib/problems';
 import { fileResults, fmtScore, focusResult, go, practiceMissed, setActiveClass, trySimilar, useStore } from '../lib/store';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -26,9 +26,6 @@ function ResultRow({ q, g, active }: { q: Question; g: Grade; active: boolean })
           Q{q.n} · {t.title}
         </span>
         <span className="t-body-s c-tertiary">{detail}</span>
-      </span>
-      <span className="t-mono-s c-secondary">
-        {g.points}/{POINTS}
       </span>
       <Icon name="chevronRight" size={16} className="c-tertiary" />
     </button>
@@ -55,9 +52,9 @@ export function ResultsMain() {
     pct >= 90
       ? 'Excellent. Nothing left to fix.'
       : pct >= 70
-        ? `Solid work. ${miss === 1 ? 'One is' : `${miss} are`} worth another look.`
+        ? 'Solid work. A few are worth another look.'
         : pct >= 40
-          ? `Good start — let’s look at the ${miss} you missed.`
+          ? 'Good start — let’s look at the ones you missed.'
           : 'A tough set. The worked solutions will help.';
   const nextResult = () => {
     const list = toReview.length ? toReview : test.questions;
@@ -68,7 +65,7 @@ export function ResultsMain() {
   return (
     <div className="screen screen--split">
       <section className="split__left">
-        <SectionLabel index="04" title="Score" meta={results.via === 'paper' ? 'from your sheet' : 'from typed answers'} />
+        <SectionLabel title="Score" meta={results.via === 'paper' ? 'from your sheet' : 'from typed answers'} />
         <div className="score">
           <span className="t-mono-label c-tertiary">{test.title}</span>
           <div className="score__top">
@@ -77,7 +74,6 @@ export function ResultsMain() {
               <span className="c-tertiary">/{n}</span>
             </span>
             <div className="score__msg">
-              <Tag tone="accent">{pct}%</Tag>
               <p className="t-body-m c-secondary">{message}</p>
             </div>
           </div>
@@ -89,17 +85,17 @@ export function ResultsMain() {
           <div className="score__legend t-mono-s c-secondary">
             <span>
               <i className="dot" style={{ background: 'var(--status-correct)' }} />
-              {results.counts.correct} correct
+              Correct
             </span>
             {results.counts.partial > 0 && (
               <span>
                 <i className="dot" style={{ background: 'var(--status-partial)' }} />
-                {results.counts.partial} partial
+                Partial
               </span>
             )}
             <span>
               <i className="dot" style={{ background: 'var(--status-incorrect)' }} />
-              {results.counts.incorrect + results.counts.skipped} to review
+              To review
             </span>
           </div>
           <div className="row">
@@ -112,7 +108,7 @@ export function ResultsMain() {
           </div>
         </div>
 
-        <SectionLabel index="05" title="To review" meta={String(miss)} />
+        <SectionLabel title="To review" />
         {miss ? (
           <div className="rows">
             {toReview.map((x) => (
@@ -166,7 +162,7 @@ export function ResultsMain() {
       <div className="split__rule" aria-hidden="true" />
 
       <section className="split__right detail" key={q.id}>
-        <SectionLabel index="06" title={`Q${q.n} · ${getTemplate(q.templateId).title}`} meta={`${g.points} / ${POINTS} pts`} />
+        <SectionLabel title={`Q${q.n} · ${getTemplate(q.templateId).title}`} />
         <p className="t-body-m">
           <Prompt q={q} />
         </p>
@@ -193,11 +189,11 @@ export function ResultsRail() {
   if (!test || !results) return null;
   return (
     <>
-      <SectionLabel index="01" title="Results" meta={`${fmtScore(results.score)} / ${test.questions.length}`} />
+      <SectionLabel title="Results" />
       <div className="rail-list">
         {test.questions.map((q) => {
           const g = results.grades[q.id];
-          return <RailRow key={q.id} mark={g.result} label={getTemplate(q.templateId).title} meta={`${g.points}/${POINTS}`} active={q.id === focus} onClick={() => focusResult(q.id)} />;
+          return <RailRow key={q.id} mark={g.result} label={getTemplate(q.templateId).title} active={q.id === focus} onClick={() => focusResult(q.id)} />;
         })}
       </div>
     </>
