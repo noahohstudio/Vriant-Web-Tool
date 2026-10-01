@@ -82,7 +82,7 @@ function PracticeAside() {
   const flagged = Object.values(attempt.flagged).filter(Boolean).length;
   return (
     <aside className="aside">
-      <span className="t-mono-label c-tertiary">This test</span>
+      <span className="t-caption c-tertiary">This test</span>
       <dl className="stats">
         <div>
           <dt>Answered</dt>
@@ -199,7 +199,7 @@ export function HandInMain() {
       </div>
       <div className="handin">
         <section className="stack-12">
-          <span className="t-mono-label c-tertiary">Option A — typed</span>
+          <span className="t-caption c-tertiary">Option A — typed</span>
           <div className="option">
             <h2 className="t-heading-m">Grade my typed answers</h2>
             <p className="t-body-s c-secondary">Instant. Units and significant figures are checked too.</p>
@@ -220,7 +220,7 @@ export function HandInMain() {
           </div>
         </section>
         <section className="stack-12">
-          <span className="t-mono-label c-tertiary">Option B — on paper</span>
+          <span className="t-caption c-tertiary">Option B — on paper</span>
           <Dropzone
             title="Drop your finished sheet"
             subtitle="Photo or PDF · we match each answer to its question"

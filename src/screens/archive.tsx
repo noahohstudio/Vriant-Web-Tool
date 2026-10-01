@@ -149,7 +149,7 @@ function NewClassTile() {
   if (editing) {
     return (
       <div className="folder folder--new is-editing">
-        <span className="t-mono-label c-tertiary">New class</span>
+        <span className="t-caption c-tertiary">New class</span>
         <NameInput
           className="folder__input"
           initial=""

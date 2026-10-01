@@ -26,7 +26,7 @@ export function NotYet({ concept, query, onPick }: { concept?: Concept; query?: 
       </p>
       {suggestions.length > 0 && (
         <>
-          <p className="t-mono-label c-tertiary">Closest topics you can practice now</p>
+          <p className="t-caption c-tertiary">Closest topics you can practice now</p>
           <div className="notyet__actions">
             {suggestions.map((s) => (
               <Button key={s.id} variant="secondary" size="s" icon={picked.includes(s.id) ? 'check' : 'plus'} onClick={() => onPick(s.id)}>

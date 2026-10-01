@@ -35,7 +35,8 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible { box-shadow: va
 .t-body-s { font: 400 13px/20px var(--font-sans); letter-spacing: 0; }
 .t-label-m { font: 500 14px/20px var(--font-sans); letter-spacing: -0.0025em; }
 .t-label-s { font: 500 13px/16px var(--font-sans); }
-.t-mono-label { font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+/* Captions: section labels and small headings. Sentence case in Geist, never all caps. */
+.t-caption { font: 500 13px/16px var(--font-sans); }
 .t-mono-s { font: 400 12px/16px var(--font-mono); }
 .t-numeral { font: 600 72px/72px var(--font-sans); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .c-secondary { color: var(--text-secondary); }
@@ -262,10 +263,10 @@ button.rail-row:hover { background: var(--bg-tint); }
 .split__rule { background: var(--line-rule); }
 .detail > * { animation: rise 0.28s var(--ease-out) backwards; }
 
-.section-label { display: flex; align-items: center; gap: 12px; min-height: 16px; font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.section-label { display: flex; align-items: center; gap: 12px; min-height: 16px; font: 500 13px/16px var(--font-sans); }
 .section-label__title { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .section-label__rule { flex: 1; min-width: 24px; height: 1px; background: var(--line-rule); }
-.section-label__meta { font: 400 12px/16px var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--text-tertiary); white-space: nowrap; }
+.section-label__meta { font: 400 13px/16px var(--font-sans); color: var(--text-tertiary); white-space: nowrap; }
 
 /* ——— Buttons ————————————————————————————————————————————— */
 .btn {
@@ -461,7 +462,7 @@ select.field__input { cursor: pointer; }
 .menu__item svg { color: var(--text-secondary); }
 .menu__item:hover { background: var(--bg-tint); }
 .menu__item--danger, .menu__item--danger svg { color: var(--status-incorrect); }
-.menu__note { padding: 6px 10px 4px; color: var(--text-tertiary); font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.menu__note { padding: 6px 10px 4px; color: var(--text-tertiary); font: 500 12px/16px var(--font-sans); }
 .menu__divider { height: 1px; margin: 4px; background: var(--line-divider); }
 
 .toast {
@@ -582,7 +583,7 @@ select.field__input { cursor: pointer; }
 label.answer { cursor: text; }
 label.answer:hover { box-shadow: inset 0 0 0 1px var(--line-node); }
 .answer:focus-within { box-shadow: inset 0 0 0 1.5px var(--accent-default), 0 0 0 3px var(--accent-subtle); }
-.answer__prefix { color: var(--text-tertiary); font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.answer__prefix { color: var(--text-tertiary); font: 500 13px/16px var(--font-sans); white-space: nowrap; }
 .answer__div { flex: none; width: 1px; height: 24px; background: var(--line-divider); }
 .answer__input { flex: 1; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--text-primary); font: 400 18px/28px var(--font-sans); font-variant-numeric: tabular-nums; }
 .answer__input::placeholder { color: var(--text-tertiary); }
@@ -905,7 +906,7 @@ button.choice:active { transform: scale(0.995); }
 .topic-row__name, .topic-row .check { font: 500 14px/20px var(--font-sans); }
 .topic-row.is-off .topic-row__name { color: var(--text-tertiary); }
 .topic-row__meta { white-space: nowrap; }
-.topic-unit { padding: 18px 12px 6px; color: var(--text-tertiary); font: 500 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.topic-unit { padding: 18px 12px 6px; color: var(--text-secondary); font: 500 13px/16px var(--font-sans); }
 /* "Not in Vriant yet": dashed like the New class tile — a gap, stated plainly, with a way forward. */
 .notyet { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px 20px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius-lg); animation: rise 0.24s var(--ease-out) backwards; }
 .notyet__title { display: flex; align-items: center; gap: 8px; font: 600 15px/20px var(--font-sans); }

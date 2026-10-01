@@ -67,7 +67,7 @@ export function ResultsMain() {
       <section className="split__left">
         <SectionLabel title="Score" meta={results.via === 'paper' ? 'from your sheet' : 'from typed answers'} />
         <div className="score">
-          <span className="t-mono-label c-tertiary">{test.title}</span>
+          <span className="t-caption c-tertiary">{test.title}</span>
           <div className="score__top">
             <span className="t-numeral">
               {fmtScore(results.score)}

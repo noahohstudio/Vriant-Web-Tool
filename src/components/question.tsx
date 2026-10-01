@@ -96,7 +96,7 @@ export function QuestionCard({ q, sheetTitle, hintOpen, onHint, isLast }: { q: Q
     <article className="qcard" aria-label={`Question ${q.n}`}>
       <div className="qcard__body">
         <header className="qcard__head">
-          <span className="t-mono-label c-secondary">{unitLabel(t.concept)}</span>
+          <span className="t-caption c-secondary">{unitLabel(t.concept)}</span>
           <span className="qcard__rule" aria-hidden="true" />
           <IconButton icon="flag" size="s" label={flagged ? 'Unflag (F)' : 'Flag for review (F)'} pressed={flagged} onClick={() => toggleFlag(q.id)} />
         </header>
