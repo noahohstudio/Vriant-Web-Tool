@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `46d2244`
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `a08d17e`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -50,6 +50,7 @@ Vriant turns this week's homework into next week's practice.
 | What | Where |
 |---|---|
 | Repo | [github.com/noahohstudio/Vriant-Web-Tool](https://github.com/noahohstudio/Vriant-Web-Tool). Commit straight to `main`; no branches or PRs (§6). |
+| Live site | [noahohstudio.github.io/Vriant-Web-Tool](https://noahohstudio.github.io/Vriant-Web-Tool/). GitHub Actions builds and publishes it on every push to `main` (`.github/workflows/deploy.yml`). Pages' source must stay **GitHub Actions**: serving the branch directly publishes unbuilt source, which can't run. |
 | Curriculum research | [`docs/curriculum.md`](docs/curriculum.md) |
 | Figma file | [Vriant Design System — Screens](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens) |
 | Design system (14 boards) | [Design System page → “Vriant — Design System”](https://www.figma.com/design/d6rHTEFeSFwl2hGy61SOMY/Vriant-Design-System---Screens?node-id=5-2) |
@@ -331,7 +332,7 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 9. **Content is original and checked.** See the content rules in §4.4.
 10. **Workflow:**
     - Commit directly to `main`.
-    - Run `npm run build` and `npm run check:generator` before pushing.
+    - Run `npm run build` and `npm run check:generator` before pushing. **Every push to `main` deploys the live site**; check that its Actions run passed.
     - **Update this file after every push.**
 
 ---
@@ -468,7 +469,7 @@ When a token changes, update Figma and `tokens.css` together.
 
 ### Phase C — Product polish and reach
 
-- **Hosting:** deploy the static build to **Vercel**. The free Hobby plan is non-commercial; a paid plan is only needed if Vriant becomes commercial. Keep the size budgets.
+- **Hosting:** live on **GitHub Pages** (free), built by GitHub Actions. Vercel stays an option if Vriant needs a custom domain setup or preview deploys; its free Hobby plan is non-commercial. Keep the size budgets.
 - **More devices:** a mobile layout and camera-first capture.
 - **Paper:**
   - A **print layout** for practice tests, needed for the paper path.
@@ -547,3 +548,4 @@ When a token changes, update Figma and `tokens.css` together.
 | 2026-09-28 | Handoff revamped around the bank, coverage and the phased roadmap (§10). |
 | 2026-09-28 | Bank engine ready for every course: course files register themselves from `src/bank/courses/`; maths answers show and grade exactly (fractions, π, roots); prompts can use derived values; worded "which one?" questions; per-template tolerance. `docs/authoring.md` is the guide for writing banks. |
 | 2026-09-28 | Sheets are read for real, on the device: PDF text (pdf.js), OCR for photos and scanned PDFs (Tesseract, engine from jsDelivr on first use), pasted text. Problems are matched to concepts by keywords plus similarity to the bank's templates; guesses are marked "Check" and every topic can be changed. |
+| 2026-09-30 | The live site is built by GitHub Actions and published to GitHub Pages. Pages had been serving the unbuilt source, so visitors were stuck on the loading screen. If the app can't start, the loading screen now says so and offers Reload. PDF pages render in one pass, so reading never stalls in a background tab. |
