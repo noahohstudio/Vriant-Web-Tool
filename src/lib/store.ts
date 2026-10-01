@@ -78,7 +78,7 @@ const SEED_ITEMS: ArchiveItem[] = [
   { id: 'seed-4', title: 'Limits — Warm-up', classId: 'calc-ab', detail: '6 problems', createdAt: NOW - 20 * DAY, tone: 'neutral', label: 'Not graded' },
   { id: 'seed-5', title: 'Stoichiometry — Worksheet 1', classId: 'chem', detail: '6 problems', createdAt: NOW - 11 * DAY, tone: 'correct', label: '6/6' },
 ];
-const DEFAULT_SETUP: Setup = { selected: {}, count: 10, difficulty: 'same', timer: true };
+const DEFAULT_SETUP: Setup = { selected: {}, count: 10, difficulty: 'same', timer: false };
 /** Problems that start ticked: everything we can practice, except detected problems whose topic is only a guess. */
 const selectAll = (sheet: Sheet) => Object.fromEntries(sheet.problems.filter((p) => p.supported && p.concept && p.confidence !== 'weak').map((p) => [p.n, true]));
 

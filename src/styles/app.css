@@ -802,14 +802,14 @@ html.vt-theme::view-transition-new(theme-switch), html.vt-nav::view-transition-n
 .slider__rail, .slider__fill-wrap { position: absolute; top: 50%; height: 4px; margin-top: -2px; }
 .slider__rail { left: 0; right: 0; border-radius: var(--radius-full); background: var(--bg-tint-strong); }
 .slider__fill-wrap { left: calc(var(--knob) / 2); right: calc(var(--knob) / 2); }
-.slider__fill { position: absolute; inset: 0 auto 0 calc(var(--knob) / -2); width: calc(100% + var(--knob) / 2); border-radius: var(--radius-full); background: var(--accent-default); transform-origin: left; transform: scaleX(calc((var(--p) * (1 - var(--knob-share, 0))) + var(--knob-share, 0))); }
+.slider__fill { position: absolute; inset: 0 auto 0 calc(var(--knob) / -2); width: calc(100% + var(--knob) / 2); border-radius: var(--radius-full); background: var(--text-secondary); transform-origin: left; transform: scaleX(calc((var(--p) * (1 - var(--knob-share, 0))) + var(--knob-share, 0))); }
 .slider__ticks { position: absolute; top: 50%; left: calc(var(--knob) / 2); right: calc(var(--knob) / 2); }
-.slider__ticks i { position: absolute; top: 0; left: calc(var(--at) * 100%); width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--line-node); transition: background-color var(--dur-base); }
-.slider__ticks i.is-on { background: var(--text-on-accent); opacity: 0.75; }
+.slider__ticks i { position: absolute; top: 0; left: calc(var(--at) * 100%); width: 2px; height: 2px; margin: -1px 0 0 -1px; border-radius: 50%; background: var(--text-tertiary); opacity: 0.35; transition: background-color var(--dur-base), opacity var(--dur-base); }
+.slider__ticks i.is-on { background: var(--bg-raised); opacity: 0.3; }
 /* A knob-sized box that travels p × (track − knob), so it never reaches past the track and can't widen the column around it. */
 .slider__knob-rail { position: absolute; inset: 0 auto 0 0; width: var(--knob); pointer-events: none; transform: translateX(calc(var(--p) * (100cqw - var(--knob)))); }
-.slider__knob { position: absolute; top: 50%; left: 0; width: var(--knob); height: var(--knob); margin-top: calc(var(--knob) / -2); border-radius: 50%; background: var(--bg-raised); box-shadow: var(--shadow-raised), inset 0 0 0 1.5px var(--accent-default); pointer-events: auto; cursor: grab; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast); }
-.slider__knob:focus-visible { box-shadow: var(--shadow-raised), inset 0 0 0 1.5px var(--accent-default), 0 0 0 4px var(--accent-subtle); }
+.slider__knob { position: absolute; top: 50%; left: 0; width: var(--knob); height: var(--knob); margin-top: calc(var(--knob) / -2); border-radius: 50%; background: var(--bg-raised); box-shadow: var(--shadow-raised), inset 0 0 0 1.5px var(--text-secondary); pointer-events: auto; cursor: grab; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast); }
+.slider__knob:focus-visible { box-shadow: var(--shadow-raised), inset 0 0 0 1.5px var(--text-secondary), 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--accent-default); }
 .slider:not(.is-dragging) .slider__knob-rail, .slider:not(.is-dragging) .slider__fill { transition: transform 280ms var(--ease-out); }
 .slider.is-dragging .slider__knob { cursor: grabbing; transform: scale(1.12); }
 .slider__marks { position: relative; height: 16px; margin: 0 0 2px; }
