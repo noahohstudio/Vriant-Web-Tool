@@ -1,6 +1,6 @@
 # Vriant — Handoff
 
-> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `584a89b`
+> **Status:** v0.4 · working prototype on `main` · last updated 28 Sep 2026 · describes the code at commit `cfb4979`
 >
 > **Keep this file current.** After every handoff, and every time a change set is pushed to `main`, update:
 > 1. the Status line above (date and commit)
@@ -348,8 +348,8 @@ Nodes (11px crosses) mark the joints. Review and Results add a **split rule** be
 **Colour & themes:**
 - **Signature** (default): oat paper `#ECE5D8`, graphite ink `#1C1B19`, ballpoint blue `#3348D4`.
 - **Light:** paper white. **Dark:** graphite paper with oat ink.
-- **Accent never fills a button.** Scanning is monochrome; blue appears on drag-over, selection, focus, current, and changed values in a prompt.
-- **Setup controls are calm:** sliders use graphite (`text/secondary`) for the fill and knob ring, with faint 2px stops. Blue is only their keyboard focus ring.
+- **Accent never fills a button or a control.** Blue means only: keyboard focus, the current tab, values that changed in a prompt, detected regions on a scanned page, and drag-over. Scanning is monochrome.
+- **Controls are calm graphite:** checked checkboxes and slider fills and knob rings use `text/secondary`; slider stops are faint 2px dots. Their focus ring is the one blue.
 - **Status colours are always paired with a glyph** (✓ ½ ✕).
 - Contrast is AA for primary, secondary, accent, status and button text in all three themes. `text/tertiary` reaches UI-level contrast only.
 - **Oat was chosen** over Chalk & Ink, Sage & Pine and Legal pad (Figma board 05).
@@ -555,3 +555,4 @@ When a token changes, update Figma and `tokens.css` together.
 | 2026-10-01 | Numbers only where they're used: the score, test progress, the question-count setting, the timer, answered-before-hand-in, the sheet's own problem numbers, dates and keys. Section indices (01, 02…), counts, points, percentages, page counters, course codes and the version number are gone. |
 | 2026-10-01 | Captions are sentence-case Geist Medium 13/16 on their rule, never all caps (option 2 of 3: chosen over quiet mono and a node heading). Geist Mono stays only for small specs. |
 | 2026-10-01 | Test setup calmed: sliders are graphite with faint stops (blue only for keyboard focus), and "Time myself" starts Off. |
+| 2026-10-01 | Checkboxes are graphite too. Blue is reserved for focus, the current tab, changed values, scan regions and drag-over: a tighter, more learnable accent rule. |
